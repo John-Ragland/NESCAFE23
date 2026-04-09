@@ -41,12 +41,33 @@ dependencies = [
   "pygenray",
 ]
 
+[dependency-groups]
+test = [
+  "pytest >=9",
+  "pytest-cov >=7",
+]
+dev = [
+  { include-group = "test" },
+  "ipykernel",
+]
+docs = [
+  "sphinx>=7.0",
+  "myst_parser>=0.13",
+  "sphinx_copybutton",
+  "sphinx_autodoc_typehints",
+  "furo>=2023.08.17",
+]
+
 [project.scripts]
 nescafe23-init = "nescafe23.cli:main"
 
 [project.optional-dependencies]
-fluctuations = ["NESCAFE23-fluctuations"]
-source-localization = ["n23-source-localization"]
+n23-fluctuations-ragland = ["n23-fluctuations-ragland"]
+n23-source-localization-hoekstra = ["n23-source-localization-hoekstra"]
+acoustic-inversion = ["acoustic-inversion"]
+nesma-param = ["nesma-param"]
+n23-inversion-ragland = ["n23-inversion-ragland"]
+
 
 [project.urls]
 Homepage = "https://github.com/John-Ragland/NESCAFE23"
@@ -57,9 +78,13 @@ requires = ["uv_build>=0.9.18,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.workspace]
-members = ["projects/*"]
+members = ["projects/*", "packages/*"]
 
 [tool.uv.sources]
-NESCAFE23-fluctuations = { workspace = true }
-n23-source-localization = { workspace = true }
+n23-fluctuations-ragland = { workspace = true }
+n23-source-localization-hoekstra = { workspace = true }
+acoustic-inversion = { workspace = true }
+nesma-param = { workspace = true }
+n23-inversion-ragland = { workspace = true }
+
 pygenray = { git = "https://github.com/John-Ragland/pygenray", branch = "main" }

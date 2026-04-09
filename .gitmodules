@@ -7,3 +7,9 @@
 [submodule "packages/acoustic_inversion"]
 	path = packages/acoustic_inversion
 	url = https://github.com/John-Ragland/acoustic_inversion.git
+[submodule "packages/nesma_param"]
+	path = packages/nesma_param
+	url = https://github.com/John-Ragland/nesma_param.git
+[submodule "projects/n23_inversion_ragland"]
+	path = projects/n23_inversion_ragland
+	url = https://github.com/John-Ragland/n23_inversion_ragland.git

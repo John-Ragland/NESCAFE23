@@ -112,3 +112,39 @@ def open_receptions(time_slice=(90, 120)):
         dss.append(ds)
 
     return dss
+
+
+def open_peak_locations():
+    """
+    Open observed peak locations.
+
+    The file is produced by the ``nescafe23_processing`` CLI
+    (``n23_fluctuations_ragland`` package). To generate it, run::
+
+        nescafe23_processing
+
+    and select **Step 2: Estimating peak locations**, or run the full
+    processing pipeline.
+
+    Returns
+    -------
+    peak_locations : dict
+        Dictionary containing observed peak locations with keys
+        ``times``, ``angles``, and ``snrs``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``dataproducts/peak_locations.pkl`` does not exist under the
+        data directory.
+    """
+    path = get_data_dir() / "dataproducts" / "peak_locations.pkl"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Peak locations file not found at {path}.\n"
+            "Generate it by running the nescafe23_processing CLI "
+            "(from the n23_fluctuations_ragland package) and selecting "
+            "'Step 2: Estimating peak locations'."
+        )
+    with open(path, "rb") as f:
+        return pickle.load(f)
