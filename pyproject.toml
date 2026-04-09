@@ -1,0 +1,65 @@
+[project]
+name = "nescafe23"
+version = "2026.04.09"
+description = "Code for analysis and research related to the 2023 pilot New England Seamounts Calibrated Acoustic Fluctuation Experiment (NESCAFE23)."
+
+readme = "README.md"
+authors = [
+    { name = "John Ragland", email = "john.ragland@whoi.edu" },
+    { name = "John Colosi", email = "jcolosi@whoi.edu" },
+]
+
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+
+requires-python = ">=3.10"
+dependencies = [
+  "python-dotenv",
+  "questionary",
+  "xarray[complete]",
+  "gsw",
+  "h5py",
+  "xrsignal",
+  "matplotlib",
+  "numpy",
+  "scipy",
+  "fsspec",
+  "tqdm",
+  "pygenray",
+]
+
+[project.scripts]
+nescafe23-init = "nescafe23.cli:main"
+
+[project.optional-dependencies]
+fluctuations = ["NESCAFE23-fluctuations"]
+source-localization = ["n23-source-localization"]
+
+[project.urls]
+Homepage = "https://github.com/John-Ragland/NESCAFE23"
+"Bug Tracker" = "https://github.com/John-Ragland/NESCAFE23/issues"
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.workspace]
+members = ["projects/*"]
+
+[tool.uv.sources]
+NESCAFE23-fluctuations = { workspace = true }
+n23-source-localization = { workspace = true }
+pygenray = { git = "https://github.com/John-Ragland/pygenray", branch = "main" }
