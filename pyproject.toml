@@ -61,14 +61,6 @@ docs = [
 [project.scripts]
 nescafe23-init = "nescafe23.cli:main"
 
-[project.optional-dependencies]
-n23-fluctuations-ragland = ["n23-fluctuations-ragland"]
-n23-source-localization-hoekstra = ["n23-source-localization-hoekstra"]
-acoustic-inversion = ["acoustic-inversion"]
-nesma-param = ["nesma-param"]
-n23-inversion-ragland = ["n23-inversion-ragland"]
-
-
 [project.urls]
 Homepage = "https://github.com/John-Ragland/NESCAFE23"
 "Bug Tracker" = "https://github.com/John-Ragland/NESCAFE23/issues"
