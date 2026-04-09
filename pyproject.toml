@@ -81,10 +81,4 @@ build-backend = "uv_build"
 members = ["projects/*", "packages/*"]
 
 [tool.uv.sources]
-n23-fluctuations-ragland = { workspace = true }
-n23-source-localization-hoekstra = { workspace = true }
-acoustic-inversion = { workspace = true }
-nesma-param = { workspace = true }
-n23-inversion-ragland = { workspace = true }
-
 pygenray = { git = "https://github.com/John-Ragland/pygenray", branch = "main" }
