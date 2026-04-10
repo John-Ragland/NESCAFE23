@@ -102,8 +102,15 @@ def open_receptions(time_slice=(90, 120)):
     fs = fsspec.filesystem("")
     fns = fs.glob(f"{data_dir}dmod/dm*.mat")
 
-    with open(f"{data_dir}/dataproducts/T_t_estimated.pkl", "rb") as f:
-        dT_t = pickle.load(f)["dT_t"]
+    try:
+        with open(f"{data_dir}/dataproducts/T_t_estimated.pkl", "rb") as f:
+            dT_t = pickle.load(f)["dT_t"]
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"T_t_estimated.pkl not found under {data_dir}dataproducts/.\n"
+            "Generate it by running 'nescafe23' and selecting "
+            "'compute arrival time offset'."
+        ) from None
 
     dss = []
     for k, fn in enumerate(tqdm(fns)):
@@ -118,13 +125,11 @@ def open_peak_locations():
     """
     Open observed peak locations.
 
-    The file is produced by the ``nescafe23_processing`` CLI
-    (``n23_fluctuations_ragland`` package). To generate it, run::
+    The file is produced by running::
 
-        nescafe23_processing
+        nescafe23
 
-    and select **Step 2: Estimating peak locations**, or run the full
-    processing pipeline.
+    and selecting **estimate peak locations**.
 
     Returns
     -------
@@ -142,9 +147,8 @@ def open_peak_locations():
     if not path.exists():
         raise FileNotFoundError(
             f"Peak locations file not found at {path}.\n"
-            "Generate it by running the nescafe23_processing CLI "
-            "(from the n23_fluctuations_ragland package) and selecting "
-            "'Step 2: Estimating peak locations'."
+            "Generate it by running 'nescafe23' and selecting "
+            "'estimate peak locations'."
         )
     with open(path, "rb") as f:
         return pickle.load(f)

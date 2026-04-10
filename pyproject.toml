@@ -59,7 +59,7 @@ docs = [
 ]
 
 [project.scripts]
-nescafe23-init = "nescafe23.cli:main"
+nescafe23 = "nescafe23.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/John-Ragland/NESCAFE23"
