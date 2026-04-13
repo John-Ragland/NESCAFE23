@@ -3836,6 +3836,7 @@ test = [
 name = "n23-source-localization-hoekstra"
 source = { editable = "projects/n23_source_localization_hoekstra" }
 dependencies = [
+    { name = "acoustic-inversion" },
     { name = "cmps" },
     { name = "nescafe23" },
 ]
@@ -3866,6 +3867,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "acoustic-inversion", editable = "packages/acoustic_inversion" },
     { name = "cmps", git = "https://github.com/John-Ragland/cmps?branch=main" },
     { name = "nescafe23", editable = "." },
 ]
