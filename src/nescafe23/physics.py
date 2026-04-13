@@ -62,7 +62,8 @@ def compute_filtered_fctd_grid(
     fn: str | None = None,
     z_smooth: float | None = 200,
     r_smooth: float | None = 5000,
-):
+    return_latlon: bool = False,
+) -> xr.Dataset:
     """
     Compute and filter FCTD grid data without slicing or stitching.
 
@@ -83,6 +84,8 @@ def compute_filtered_fctd_grid(
     r_smooth : float or None
         Horizontal smoothing scale in meters. Default is 5000 m.
         If None, no horizontal filtering is applied.
+    return_latlon : bool
+        If True, include latitude and longitude coordinates in the output dataset.
 
     Returns
     -------
@@ -156,7 +159,7 @@ def compute_filtered_fctd_grid(
 
     fctd_filtered = xr.Dataset(fctd_filtered)
 
-    if "latitude" in fctd_filtered.coords:
+    if not return_latlon:
         fctd_filtered = fctd_filtered.drop_vars(["latitude", "longitude"])
 
     fctd_filtered["tt"].attrs["units"] = "deg C"
