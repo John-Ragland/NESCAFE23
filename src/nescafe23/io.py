@@ -100,7 +100,7 @@ def open_receptions(time_slice=(90, 120)):
     """
     data_dir = str(get_data_dir())
     fs = fsspec.filesystem("")
-    fns = fs.glob(f"{data_dir}dmod/dm*.mat")
+    fns = fs.glob(f"{data_dir}/dmod/dm*.mat")
 
     try:
         with open(f"{data_dir}/dataproducts/T_t_estimated.pkl", "rb") as f:
