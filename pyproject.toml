@@ -74,3 +74,19 @@ members = ["projects/*", "packages/*"]
 
 [tool.uv.sources]
 pygenray = { git = "https://github.com/John-Ragland/pygenray", branch = "main" }
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = ["-ra", "--showlocals", "--import-mode=importlib"]
+filterwarnings = [
+    "error",
+    "ignore::pytest.PytestConfigWarning",
+]
+log_level = "INFO"
+testpaths = [
+    "packages/acoustic_inversion/tests",
+    "packages/nesma_param/tests",
+    "projects/n23_inversion_ragland/tests",
+    "projects/n23_fluctuations_ragland/tests",
+    "projects/n23_source_localization_hoekstra/tests",
+]
