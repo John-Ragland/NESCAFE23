@@ -14,6 +14,7 @@ def plot_marginal_gaussian(
     plot_type: str = "image",
     n_contours: int = 6,
     ax: plt.Axes = None,
+    add_colorbar: bool = True,
 ) -> plt.Figure:
     """
     Extract the 2D marginal of a multivariate Gaussian and plot it.
@@ -39,6 +40,8 @@ def plot_marginal_gaussian(
         Number of contour levels in ``"image"`` mode. Default 6.
     ax : matplotlib.axes.Axes, optional
         Existing axes to draw into; a new figure is created if None.
+    add_colorbar : bool
+        Whether to add a colorbar to the plot. Default True.
 
     Returns
     -------
@@ -76,7 +79,8 @@ def plot_marginal_gaussian(
             aspect="auto",
         )
         ax.contour(X, Y, Z, levels=n_contours, colors="white", linewidths=0.6, alpha=0.5)
-        fig.colorbar(img, ax=ax, label="p(x)")
+        if add_colorbar:
+            fig.colorbar(img, ax=ax, label="p(x)")
     elif plot_type == "contour":
         sigma_levels = [1, 2, 3]
         levels = sorted(
