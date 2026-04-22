@@ -1,7 +1,7 @@
 """Visualization utilities for NESCAFE23."""
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def plot_marginal_gaussian(
@@ -34,7 +34,7 @@ def plot_marginal_gaussian(
         Matplotlib colormap name. Default "viridis".
     plot_type : str
         ``"image"`` renders a heatmap with white contour overlays (default);
-        ``"contour"`` renders unfilled contour lines at 1σ, 2σ, 3σ.
+        ``"contour"`` renders unfilled contour lines at 1, 2, and 3 sigma.
     n_contours : int
         Number of contour levels in ``"image"`` mode. Default 6.
     ax : matplotlib.axes.Axes, optional
@@ -50,8 +50,12 @@ def plot_marginal_gaussian(
     sigma_marg = sigma[np.ix_([i, j], [i, j])]
 
     std = np.sqrt(np.diag(sigma_marg))
-    x_range = np.linspace(mu_marg[0] - n_std * std[0], mu_marg[0] + n_std * std[0], n_grid)
-    y_range = np.linspace(mu_marg[1] - n_std * std[1], mu_marg[1] + n_std * std[1], n_grid)
+    x_range = np.linspace(
+        mu_marg[0] - n_std * std[0], mu_marg[0] + n_std * std[0], n_grid
+    )
+    y_range = np.linspace(
+        mu_marg[1] - n_std * std[1], mu_marg[1] + n_std * std[1], n_grid
+    )
     X, Y = np.meshgrid(x_range, y_range)
 
     pos = np.stack([X, Y], axis=-1)
@@ -75,7 +79,9 @@ def plot_marginal_gaussian(
             cmap=cmap,
             aspect="auto",
         )
-        ax.contour(X, Y, Z, levels=n_contours, colors="white", linewidths=0.6, alpha=0.5)
+        ax.contour(
+            X, Y, Z, levels=n_contours, colors="white", linewidths=0.6, alpha=0.5
+        )
         fig.colorbar(img, ax=ax, label="p(x)")
     elif plot_type == "contour":
         sigma_levels = [1, 2, 3]

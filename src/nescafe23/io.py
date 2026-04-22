@@ -1,6 +1,5 @@
 """Data I/O utilities for NESCAFE23."""
 
-import os
 import pickle
 
 import fsspec
@@ -98,16 +97,17 @@ def open_receptions(time_slice=(90, 120)):
     list of xarray.DataArray
         One DataArray per reception file, with tidal time shift removed.
     """
-    data_dir = str(get_data_dir())
+    data_dir = get_data_dir()
     fs = fsspec.filesystem("")
     fns = fs.glob(f"{data_dir}/dmod/dm*.mat")
 
+    T_t_path = data_dir / "dataproducts" / "T_t_estimated.pkl"
     try:
-        with open(f"{data_dir}/dataproducts/T_t_estimated.pkl", "rb") as f:
+        with T_t_path.open("rb") as f:
             dT_t = pickle.load(f)["dT_t"]
     except FileNotFoundError:
         raise FileNotFoundError(
-            f"T_t_estimated.pkl not found under {data_dir}dataproducts/.\n"
+            f"T_t_estimated.pkl not found under {data_dir}/dataproducts/.\n"
             "Generate it by running 'nescafe23' and selecting "
             "'compute arrival time offset'."
         ) from None
@@ -150,5 +150,5 @@ def open_peak_locations():
             "Generate it by running 'nescafe23' and selecting "
             "'estimate peak locations'."
         )
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         return pickle.load(f)

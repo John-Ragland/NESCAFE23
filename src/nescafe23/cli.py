@@ -70,7 +70,7 @@ def _ensure_data_dir():
 
     existing_path = None
     if env_path.exists():
-        with open(env_path) as f:
+        with env_path.open() as f:
             for line in f:
                 if line.strip().startswith("NESCAFE23_DATADIR"):
                     existing_path = line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -92,7 +92,7 @@ def _set_data_dir(env_path=None):
 
     existing_path = None
     if env_path.exists():
-        with open(env_path) as f:
+        with env_path.open() as f:
             for line in f:
                 if line.strip().startswith("NESCAFE23_DATADIR"):
                     existing_path = line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -118,7 +118,7 @@ def _set_data_dir(env_path=None):
 
     new_path = new_path.rstrip("/") + "/"
 
-    with open(env_path, "w") as f:
+    with env_path.open("w") as f:
         f.write(f'NESCAFE23_DATADIR="{new_path}"\n')
 
     print(f"\n✓ Set NESCAFE23_DATADIR to: {new_path}")
@@ -185,7 +185,7 @@ def compute_arrival_time_offset():
         Rxxs.append(Rxx)
 
     dT_t_upper = []
-    for k, Rxx in enumerate(Rxxs):
+    for _k, Rxx in enumerate(Rxxs):
         Rxx_sum = np.sum(Rxx, axis=0)
         idx = np.argmax(Rxx_sum)
         dT_t_upper.append(Rxx_taus[idx])
@@ -225,9 +225,11 @@ def compute_arrival_time_offset():
 
     figures_dir = data_dir / "figures"
     figures_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(figures_dir / "common_arrival_time_shift_estimation.pdf", bbox_inches="tight")
+    fig.savefig(
+        figures_dir / "common_arrival_time_shift_estimation.pdf", bbox_inches="tight"
+    )
 
-    with open(T_t_path, "wb") as f:
+    with T_t_path.open("wb") as f:
         pickle.dump(
             {
                 "dT_t": dT_avg,
@@ -266,7 +268,7 @@ def estimate_peak_locations():
     peak_locations = {"times": times, "angles": angles, "snrs": snrs}
 
     out_path = data_dir / "dataproducts" / "peak_locations.pkl"
-    with open(out_path, "wb") as f:
+    with out_path.open("wb") as f:
         pickle.dump(peak_locations, f)
 
     print(f"✓ Saved to {out_path}")
