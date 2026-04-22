@@ -12,3 +12,5 @@ wheels/
 
 dev/
 .DS_Store
+
+token.txt
