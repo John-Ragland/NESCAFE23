@@ -4,14 +4,15 @@ repos:
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=5120"]
-      - id: check-case-conflict
       - id: check-merge-conflict
-      - id: check-symlinks
       - id: check-yaml
-      - id: debug-statements
       - id: end-of-file-fixer
-      - id: mixed-line-ending
-      - id: name-tests-test
-        args: ["--pytest-test-first"]
-      - id: requirements-txt-fixer
       - id: trailing-whitespace
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.15.11"
+    hooks:
+      - id: ruff-check
+        args: ["--fix", "--show-fixes"]
+      - id: ruff-format

@@ -86,7 +86,7 @@ PEAK_BBOXS = {
 }
 
 
-def get_peak_location(dss, Tx_idxs=np.arange(23)):
+def get_peak_location(dss, Tx_idxs=None):
     """
     Estimate peak arrival locations using hand-derived bounding boxes.
 
@@ -111,6 +111,9 @@ def get_peak_location(dss, Tx_idxs=np.arange(23)):
     arrival_snr : dict
         Dict mapping ray_id → array of SNR values (shape: 23).
     """
+    if Tx_idxs is None:
+        Tx_idxs = np.arange(23)
+
     arrival_times = {}
     arrival_angles = {}
     arrival_snr = {}

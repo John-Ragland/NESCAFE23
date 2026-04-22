@@ -4,11 +4,19 @@ Shim module exposing the n23_fluctuations_ragland paper package as nescafe23.flu
 Install via: uv sync --extra fluctuations
 """
 
+import importlib
+
 try:
-    import n23_fluctuations_ragland as _pkg  # noqa: F401
-    from n23_fluctuations_ragland import *  # noqa: F401, F403
+    _pkg = importlib.import_module("n23_fluctuations_ragland")
 except ImportError as e:
     raise ImportError(
-        "n23_fluctuations_ragland is not installed. "
-        "Run: uv sync --extra fluctuations"
+        "n23_fluctuations_ragland is not installed. Run: uv sync --extra fluctuations"
     ) from e
+
+
+def __getattr__(name: str):
+    return getattr(_pkg, name)
+
+
+def __dir__() -> list[str]:
+    return dir(_pkg)

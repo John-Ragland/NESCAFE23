@@ -27,7 +27,7 @@ def get_data_dir() -> Path:
     """
     path = os.environ.get("NESCAFE23_DATADIR")
     if not path:
-        raise EnvironmentError(
+        raise OSError(
             "Set NESCAFE23_DATADIR in your .env file to the data directory path. This can be set with nescafe23 CLI by typing `nescafe23` in the terminal."
         )
     return Path(path)

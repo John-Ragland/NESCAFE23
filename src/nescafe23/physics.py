@@ -1,8 +1,8 @@
 """Oceanographic physics utilities for NESCAFE23."""
 
+import gsw
 import numpy as np
 import xarray as xr
-import gsw
 import xrsignal as xrs
 from scipy import io, signal
 
@@ -101,6 +101,7 @@ def compute_filtered_fctd_grid(
     """
     if fn is None:
         from nescafe23.data import get_data_dir
+
         fn = str(get_data_dir() / "environment_data" / "FCTD_SoundSpeed_Colosi_v2.mat")
 
     fctd_mat = io.loadmat(fn)

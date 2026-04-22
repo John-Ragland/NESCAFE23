@@ -27,10 +27,7 @@ def parse_ray_id(ray_id: str) -> tuple:
 
     number = int(number_str)
 
-    if sign == "-":
-        ray_id_pr = f"-{number}.0{suffix}"
-    else:
-        ray_id_pr = f"{number}.0{suffix}"
+    ray_id_pr = f"-{number}.0{suffix}" if sign == "-" else f"{number}.0{suffix}"
 
     return ray_id_pr, (sign, number, suffix)
 
@@ -64,4 +61,4 @@ def n_botts_ray_id(ray_ids: list) -> dict:
             else:
                 n_botts.append((ray_id_num + 1) / 2)
 
-    return dict(zip(ray_ids, n_botts))
+    return dict(zip(ray_ids, n_botts, strict=False))

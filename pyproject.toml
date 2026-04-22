@@ -49,6 +49,7 @@ test = [
 dev = [
   { include-group = "test" },
   "ipykernel",
+  "pre-commit",
 ]
 docs = [
   "sphinx>=7.0",
@@ -74,3 +75,41 @@ members = ["projects/*", "packages/*"]
 
 [tool.uv.sources]
 pygenray = { git = "https://github.com/John-Ragland/pygenray", branch = "main" }
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = ["-ra", "--showlocals", "--import-mode=importlib"]
+strict_markers = true
+# ignore::pytest.PytestConfigWarning lets missing testpath dirs degrade gracefully
+# — allows CI to check out only a subset of submodules and still collect tests
+# from the ones that are populated.
+filterwarnings = [
+    "error",
+    "ignore::pytest.PytestConfigWarning",
+]
+log_level = "INFO"
+testpaths = [
+    "tests",
+    "packages/acoustic_inversion/tests",
+    "packages/nesma_param/tests",
+    "projects/n23_inversion_ragland/tests",
+    "projects/n23_fluctuations_ragland/tests",
+    "projects/n23_source_localization_hoekstra/tests",
+]
+
+
+[tool.ruff]
+extend-exclude = ["notebooks", "dev", "*.ipynb"]
+
+[tool.ruff.lint]
+extend-select = [
+  "B",    # flake8-bugbear
+  "I",    # isort
+  "UP",   # pyupgrade
+  "SIM",  # flake8-simplify
+  "RUF",  # ruff-specific rules
+  "NPY",  # numpy-specific
+  "PD",   # pandas-vet
+  "PT",   # flake8-pytest-style
+  "PTH",  # flake8-use-pathlib
+]

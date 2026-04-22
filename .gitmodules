@@ -1,10 +1,10 @@
 [submodule "projects/n23_fluctuations_ragland"]
 	path = projects/n23_fluctuations_ragland
-	url = https://github.com/John-Ragland/nescafe_23_fluctuations.git
+	url = https://github.com/John-Ragland/n23_fluctuations_ragland.git
 	branch = main
 [submodule "projects/n23_source_localization_hoekstra"]
 	path = projects/n23_source_localization_hoekstra
-	url = https://github.com/John-Ragland/n23_source_localization.git
+	url = https://github.com/John-Ragland/n23_source_localization_hoekstra.git
 	branch = main
 [submodule "packages/acoustic_inversion"]
 	path = packages/acoustic_inversion
