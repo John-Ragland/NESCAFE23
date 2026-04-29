@@ -18,3 +18,7 @@
 	path = projects/n23_inversion_ragland
 	url = https://github.com/John-Ragland/n23_inversion_ragland.git
 	branch = main
+[submodule "projects/n23_PE_boundary_decourcy"]
+	path = projects/n23_PE_boundary_decourcy
+	url = https://github.com/John-Ragland/n23_PE_boundary_decourcy.git
+	branch = main
