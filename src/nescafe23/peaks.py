@@ -9,7 +9,7 @@ from nescafe23.beamforming import ULA_conventional_beamform_nostack
 # Each entry is either:
 #   - a tuple (t1, t2, th1, th2) — same bounds for all transmissions
 #   - a dict {Tx_num: (t1, t2, th1, th2)} — per-transmission bounds
-PEAK_BBOXS = {
+PEAK_BOXES_LOWER = {
     "+7": (101, 101.1, -13, -4),
     "+6": {
         0: (100.855, 100.885, 7.5, 10),
@@ -85,32 +85,25 @@ PEAK_BBOXS = {
     "-15b": (110, 111.4, 20, 30),
 }
 
-PEAK_BBOXS_UPPER = {
-    "+7": (),
-    "+6": (),
-    "-7": (),
-    "-6": (),
-    "-5b": (),
-    "-6b": (),
-    "+6b": (),
-    "+7b": (),
-    "-7b": (),
-    "-8b": (),
-    "+8b": (),
-    "+9b": (),
-    "-9b": (),
-    "-10b": (),
-    "+10b": (),
-    "+11b": (),
-    "-11b": (),
-    "-12b": (),
-    "+12b": (),
-    "+13b": (),
-    "-13b": (),
-    "-14b": (),
-    "+14b": (),
-    "+15b": (),
-    "-15b": (),
+PEAK_BOXES_UPPER = {
+    "+6b": (101.3, 101.7, 12, 19),
+    "+7b": (101.25, 101.75, -20, -12),
+    "-7b": (102, 102.1, 13, 20),
+    "-8b": (102, 102.5, -22, -12),
+    "+8b": (102.8, 103.4, 13, 22),
+    "+9b": (102.75, 103.5, -22, -12),
+    "-9b": (103.8, 104.3, 16, 23),
+    "-10b": (103.75, 104.5, -24, -14),
+    "+10b": (104.8, 105.4, 18, 22),
+    "+11b": (104.75, 105.5, -26, -15),
+    "-11b": (106, 106.5, 18, 26),
+    "-12b": (106, 106.25, -28, -18),
+    "+12b": (107, 107.8, 20, 26),
+    "+13b": (107, 108, -28, -20),
+    "-13b": (108.25, 109.5, 22, 30),
+    "-14b": (108.5, 109.5, -28, -22),
+    "+14b": (109.5, 110.5, 22, 32),
+    "+15b": (109.75, 110.5, -32, -22),
 }
 
 
@@ -120,7 +113,7 @@ def get_peak_location(dss, Tx_idxs=None):
 
     For each transmission, beamforms the lower receiver array and finds the
     time and angle of maximum intensity within each ray's bounding box
-    (defined in :data:`PEAK_BBOXS`).
+    (defined in :data:`PEAK_BOXES_LOWER`).
 
     Parameters
     ----------
@@ -146,10 +139,19 @@ def get_peak_location(dss, Tx_idxs=None):
     arrival_angles = {}
     arrival_snr = {}
 
-    for ray_id in PEAK_BBOXS:
+    arrival_times_upper = {}
+    arrival_angles_upper = {}
+    arrival_snr_upper = {}
+
+    for ray_id in PEAK_BOXES_LOWER:
         arrival_times[ray_id] = np.ones(23) * np.nan
         arrival_angles[ray_id] = np.ones(23) * np.nan
         arrival_snr[ray_id] = np.ones(23) * np.nan
+
+    for ray_id in PEAK_BOXES_UPPER:
+        arrival_times_upper[ray_id] = np.ones(23) * np.nan
+        arrival_angles_upper[ray_id] = np.ones(23) * np.nan
+        arrival_snr_upper[ray_id] = np.ones(23) * np.nan
 
     for Tx_num in tqdm(Tx_idxs, desc="Tx num"):
         thetas = np.linspace(-35, 35, 200)
@@ -159,96 +161,35 @@ def get_peak_location(dss, Tx_idxs=None):
             .rename({"nominal_depth": "depth"})[32:]
         )
 
-        bf_unstacked, _ = ULA_conventional_beamform_nostack(lower_Rx, thetas)
-        bf = bf_unstacked.sum("depth")
-
-        bf_noise = 20 * np.log10(np.abs(bf.sel({"time": slice(90, 95)}).std("time")))
-
-        for ray_id in PEAK_BBOXS:
-            if isinstance(PEAK_BBOXS[ray_id], tuple):
-                t1, t2, th1, th2 = PEAK_BBOXS[ray_id]
-            elif isinstance(PEAK_BBOXS[ray_id], dict):
-                t1, t2, th1, th2 = PEAK_BBOXS[ray_id][Tx_num]
-            else:
-                raise ValueError("PEAK_BBOXS entry must be tuple or dict")
-
-            env_slice = 20 * np.log10(
-                np.abs(bf.sel({"time": slice(t1, t2), "angle": slice(th1, th2)}))
-            )
-            flat_idx = env_slice.argmax().item()
-            tmax_idx, thmax_idx = np.unravel_index(flat_idx, env_slice.shape)
-            tmax = env_slice.time[tmax_idx].values
-            thmax = env_slice.angle[thmax_idx].values
-
-            arrival_times[ray_id][Tx_num] = tmax
-            arrival_angles[ray_id][Tx_num] = thmax
-            arrival_snr[ray_id][Tx_num] = env_slice.max() - bf_noise[thmax_idx]
-
-    return arrival_times, arrival_angles, arrival_snr
-
-
-def get_peak_location_upper(dss, Tx_idxs=None):
-    """
-    Estimate peak arrival locations using hand-derived bounding boxes.
-
-    For each transmission, beamforms the lower receiver array and finds the
-    time and angle of maximum intensity within each ray's bounding box
-    (defined in :data:`PEAK_BBOXS`).
-
-    Parameters
-    ----------
-    dss : list of xarray.DataArray
-        List of receptions, one per transmission. Created with
-        :func:`nescafe23.open_receptions`.
-    Tx_idxs : array-like
-        Transmission indices to process. Default is all 23.
-
-    Returns
-    -------
-    arrival_times : dict
-        Dict mapping ray_id → array of arrival times (shape: 23).
-    arrival_angles : dict
-        Dict mapping ray_id → array of arrival angles (shape: 23).
-    arrival_snr : dict
-        Dict mapping ray_id → array of SNR values (shape: 23).
-    """
-    if Tx_idxs is None:
-        Tx_idxs = np.arange(23)
-
-    arrival_times = {}
-    arrival_angles = {}
-    arrival_snr = {}
-
-    for ray_id in PEAK_BBOXS:
-        arrival_times[ray_id] = np.ones(23) * np.nan
-        arrival_angles[ray_id] = np.ones(23) * np.nan
-        arrival_snr[ray_id] = np.ones(23) * np.nan
-
-    for Tx_num in tqdm(Tx_idxs, desc="Tx num"):
-        thetas = np.linspace(-35, 35, 200)
         upper_Rx = (
             dss[Tx_num]
             .swap_dims({"hydrophone": "nominal_depth"})
             .rename({"nominal_depth": "depth"})[:32]
         )
 
-        bf_unstacked, _ = ULA_conventional_beamform_nostack(upper_Rx, thetas)
+        bf_unstacked, _ = ULA_conventional_beamform_nostack(lower_Rx, thetas)
         bf = bf_unstacked.sum("depth")
 
-        bf_noise = 20 * np.log10(np.abs(bf.sel({"time": slice(90, 95)}).std("time")))
+        bf_unstacked_upper, _ = ULA_conventional_beamform_nostack(upper_Rx, thetas)
+        bf_upper = bf_unstacked_upper.sum("depth")
 
-        for ray_id in PEAK_BBOXS:
-            if isinstance(PEAK_BBOXS[ray_id], tuple):
-                t1, t2, th1, th2 = PEAK_BBOXS[ray_id]
-            elif isinstance(PEAK_BBOXS[ray_id], dict):
-                t1, t2, th1, th2 = PEAK_BBOXS[ray_id][Tx_num]
+        bf_noise = 20 * np.log10(np.abs(bf.sel({"time": slice(90, 95)}).std("time")))
+        bf_noise_upper = 20 * np.log10(
+            np.abs(bf_upper.sel({"time": slice(90, 95)}).std("time"))
+        )
+
+        for ray_id in PEAK_BOXES_LOWER:
+            if isinstance(PEAK_BOXES_LOWER[ray_id], tuple):
+                t1, t2, th1, th2 = PEAK_BOXES_LOWER[ray_id]
+            elif isinstance(PEAK_BOXES_LOWER[ray_id], dict):
+                t1, t2, th1, th2 = PEAK_BOXES_LOWER[ray_id][Tx_num]
             else:
-                raise ValueError("PEAK_BBOXS entry must be tuple or dict")
+                raise ValueError("PEAK_BOXES_LOWER entry must be tuple or dict")
 
             env_slice = 20 * np.log10(
                 np.abs(bf.sel({"time": slice(t1, t2), "angle": slice(th1, th2)}))
             )
-            flat_idx = env_slice.argmax().item()
+            flat_idx = np.argmax(env_slice.data)
             tmax_idx, thmax_idx = np.unravel_index(flat_idx, env_slice.shape)
             tmax = env_slice.time[tmax_idx].values
             thmax = env_slice.angle[thmax_idx].values
@@ -257,4 +198,28 @@ def get_peak_location_upper(dss, Tx_idxs=None):
             arrival_angles[ray_id][Tx_num] = thmax
             arrival_snr[ray_id][Tx_num] = env_slice.max() - bf_noise[thmax_idx]
 
-    return arrival_times, arrival_angles, arrival_snr
+        for ray_id in PEAK_BOXES_UPPER:
+            t1, t2, th1, th2 = PEAK_BOXES_UPPER[ray_id]
+
+            env_slice = 20 * np.log10(
+                np.abs(bf_upper.sel({"time": slice(t1, t2), "angle": slice(th1, th2)}))
+            )
+            flat_idx = np.argmax(env_slice.data)
+            tmax_idx, thmax_idx = np.unravel_index(flat_idx, env_slice.shape)
+            tmax = env_slice.time[tmax_idx].values
+            thmax = env_slice.angle[thmax_idx].values
+
+            arrival_times_upper[ray_id][Tx_num] = tmax
+            arrival_angles_upper[ray_id][Tx_num] = thmax
+            arrival_snr_upper[ray_id][Tx_num] = (
+                env_slice.max() - bf_noise_upper[thmax_idx]
+            )
+
+    return (
+        arrival_times,
+        arrival_angles,
+        arrival_snr,
+        arrival_times_upper,
+        arrival_angles_upper,
+        arrival_snr_upper,
+    )

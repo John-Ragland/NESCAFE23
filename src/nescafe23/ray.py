@@ -17,6 +17,11 @@ def parse_ray_id(ray_id: str) -> tuple:
     (sign, number, suffix) : tuple
         Parsed components of the ray identifier.
     """
+
+    # remove upper array suffix if present
+    if ray_id.endswith("u"):
+        ray_id = ray_id[:-1]
+
     sign = ray_id[0]  # '+' or '-'
     if ray_id.endswith("b"):
         number_str = ray_id[1:-1]  # digits between sign and 'b'

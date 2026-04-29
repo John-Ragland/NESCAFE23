@@ -118,12 +118,12 @@ def collect_upper_array_bboxs(
     figsize: tuple[float, float] = (14, 6),
 ) -> dict[str, tuple[float, float, float, float]]:
     """
-    Interactively collect bounding boxes for each ray in PEAK_BBOXS_UPPER.
+    Interactively collect bounding boxes for each ray in PEAK_BOXES_LOWER_UPPER.
 
     Displays the beamformed envelope (depth-averaged, dB scale) and steps
-    through each key of PEAK_BBOXS_UPPER in order.  For each ray the view
+    through each key of PEAK_BOXES_LOWER_UPPER in order.  For each ray the view
     auto-zooms to the existing bbox ±30 % padding.  Draw a rectangle then
-    click Accept to save it, or Skip to keep the existing PEAK_BBOXS_UPPER
+    click Accept to save it, or Skip to keep the existing PEAK_BOXES_LOWER_UPPER
     value unchanged.  Requires an interactive matplotlib backend
     (e.g. ``%matplotlib widget`` in Jupyter).
 
@@ -143,9 +143,9 @@ def collect_upper_array_bboxs(
     -------
     dict[str, tuple[float, float, float, float]]
         ``{ray_id: (t1, t2, th1, th2)}`` for every key in
-        :data:`nescafe23.peaks.PEAK_BBOXS_UPPER`.
+        :data:`nescafe23.peaks.PEAK_BOXES_LOWER_UPPER`.
     """
-    from nescafe23.peaks import PEAK_BBOXS_UPPER
+    from nescafe23.peaks import PEAK_BOXES_LOWER_UPPER
 
     if "depth" in bf.dims:
         bf = bf.mean("depth")
@@ -153,7 +153,7 @@ def collect_upper_array_bboxs(
     bf_db: xr.DataArray = 20 * np.log10(np.abs(bf))
     _vmax = float(bf_db.max()) if vmax is None else vmax
 
-    keys = list(PEAK_BBOXS_UPPER)
+    keys = list(PEAK_BOXES_LOWER_UPPER)
     n_keys = len(keys)
 
     state: dict = {
@@ -268,7 +268,7 @@ def collect_upper_array_bboxs(
 
     # ── zoom helper ────────────────────────────────────────────────────────
     def _zoom_to(ray_id: str):
-        t1, t2, th1, th2 = PEAK_BBOXS_UPPER[ray_id]
+        t1, t2, th1, th2 = PEAK_BOXES_LOWER_UPPER[ray_id]
         t_pad = max((t2 - t1) * 1.5, 0.05)
         th_pad = max((th2 - th1) * 1.5, 2.0)
         ax_im.set_xlim(t1 - t_pad, t2 + t_pad)
@@ -355,7 +355,7 @@ def collect_upper_array_bboxs(
     def _on_skip(_event):
         try:
             key = keys[state["idx"]]
-            state["results"][key] = PEAK_BBOXS_UPPER[key]
+            state["results"][key] = PEAK_BOXES_LOWER_UPPER[key]
             _advance()
         except Exception as exc:
             ax_im.set_title(f"⚠ {exc}", color="#f85149", pad=6, fontsize=9)

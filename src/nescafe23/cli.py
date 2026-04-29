@@ -264,8 +264,15 @@ def estimate_peak_locations():
         )
 
     dss = open_receptions()
-    times, angles, snrs = get_peak_location(dss)
-    peak_locations = {"times": times, "angles": angles, "snrs": snrs}
+    times, angles, snrs, upper_times, upper_angles, upper_snrs = get_peak_location(dss)
+    peak_locations = {
+        "times": times,
+        "angles": angles,
+        "snrs": snrs,
+        "upper_times": upper_times,
+        "upper_angles": upper_angles,
+        "upper_snrs": upper_snrs,
+    }
 
     out_path = data_dir / "dataproducts" / "peak_locations.pkl"
     with out_path.open("wb") as f:
