@@ -39,6 +39,7 @@ dependencies = [
   "fsspec",
   "tqdm",
   "pygenray",
+  "ipympl",
 ]
 
 [dependency-groups]
@@ -95,6 +96,7 @@ testpaths = [
     "projects/n23_inversion_ragland/tests",
     "projects/n23_fluctuations_ragland/tests",
     "projects/n23_source_localization_hoekstra/tests",
+    "projects/n23_PE_boundary_decourcy/tests",
 ]
 
 
