@@ -1,6 +1,7 @@
 """nescafe23 unified CLI."""
 
 import pickle
+import urllib.request
 from functools import wraps
 from pathlib import Path
 
@@ -123,6 +124,23 @@ def _set_data_dir(env_path=None):
 
     print(f"\n✓ Set NESCAFE23_DATADIR to: {new_path}")
     print(f"✓ Saved to: {env_path}")
+
+
+def download_fonts():
+    """Download RedHatDisplay-Medium.ttf to {NESCAFE23_DATADIR}/fonts/."""
+    data_dir = get_data_dir()
+    fonts_dir = data_dir / "fonts"
+    dest = fonts_dir / "RedHatDisplay-Medium.ttf"
+
+    if dest.exists():
+        print(f"Font already exists at {dest}. Skipping download.")
+        return
+
+    fonts_dir.mkdir(parents=True, exist_ok=True)
+    url = "https://raw.githubusercontent.com/RedHatOfficial/RedHatFont/master/fonts/Proportional/RedHatDisplay/ttf/RedHatDisplay-Medium.ttf"
+    print(f"Downloading RedHatDisplay-Medium.ttf...")
+    urllib.request.urlretrieve(url, dest)
+    print(f"✓ Saved to {dest}")
 
 
 @check_output_exists(lambda: get_data_dir() / "dataproducts" / "T_t_estimated.pkl")
@@ -296,6 +314,7 @@ def main():
         choices=[
             "compute arrival time offset",
             "estimate peak locations",
+            "download fonts",
             "set data directory",
             "exit",
         ],
@@ -305,6 +324,8 @@ def main():
         compute_arrival_time_offset()
     elif choice == "estimate peak locations":
         estimate_peak_locations()
+    elif choice == "download fonts":
+        download_fonts()
     elif choice == "set data directory":
         _set_data_dir()
     elif choice == "exit":
