@@ -138,7 +138,7 @@ def download_fonts():
 
     fonts_dir.mkdir(parents=True, exist_ok=True)
     url = "https://raw.githubusercontent.com/RedHatOfficial/RedHatFont/master/fonts/Proportional/RedHatDisplay/ttf/RedHatDisplay-Medium.ttf"
-    print(f"Downloading RedHatDisplay-Medium.ttf...")
+    print("Downloading RedHatDisplay-Medium.ttf...")
     urllib.request.urlretrieve(url, dest)
     print(f"✓ Saved to {dest}")
 
