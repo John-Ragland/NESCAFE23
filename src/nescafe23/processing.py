@@ -1,9 +1,7 @@
-"""Peak location estimation for NESCAFE23 ray arrivals."""
-
 import numpy as np
+import scipy
+import xarray as xr
 from tqdm import tqdm
-
-from nescafe23.beamforming import ULA_conventional_beamform_nostack
 
 # Angle / time bounding boxes for each arrival (chosen by hand).
 # Each entry is either:
@@ -105,6 +103,106 @@ PEAK_BOXES_UPPER = {
     "+14b": (109.5, 110.5, 22, 32),
     "+15b": (109.75, 110.5, -32, -22),
 }
+
+
+def ULA_conventional_beamform_nostack(da, thetas, c0=1500):
+    """
+    Conventional beamforming for a uniform linear array without depth stacking.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Signal to beamform. Should have dimensions ['depth', 'time'].
+    thetas : np.array
+        Array of angles (in degrees) to beamform.
+    c0 : float
+        Reference sound speed in m/s. Default is 1500.
+
+    Returns
+    -------
+    dmod_bf : xr.DataArray
+        Beamformed output with dimensions ['depth', 'time', 'angle'].
+    delts : np.ndarray
+        Time delays applied during beamforming.
+    """
+    zs = da.depth.values
+    z0 = np.mean(zs)
+
+    dt = float(da.time[1] - da.time[0])
+    nt = len(da.time)
+
+    f = scipy.fft.fftfreq(nt, dt)
+    ws = 2 * np.pi * f
+
+    w = 2 * np.pi * 250
+
+    delts = -(zs - z0)[:, None] * np.sin(np.radians(thetas[None, :])) / c0
+
+    da = da.transpose("depth", "time")
+    dmodf = scipy.fft.fft(da.values, axis=1)
+    dmodf_ps = dmodf[:, :, None] * np.exp(
+        1j * (ws[None, :, None] + w) * delts[:, None, :]
+    )
+
+    dmod_ps_t = scipy.fft.ifft(dmodf_ps, axis=1)
+    dmod_bf = xr.DataArray(
+        dmod_ps_t,
+        dims=["depth", "time", "angle"],
+        coords={"depth": da.depth.values, "time": da.time.values, "angle": thetas},
+    )
+
+    return dmod_bf, delts
+
+
+def ULA_conventional_beamform(da, thetas, c0=1500):
+    """
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        signal to beamform. should have dimensions ['depth', 'time']
+    thetas : np.array
+        array of angles (in degrees) to beamform
+    """
+
+    zs = da.depth.values
+    len(zs)
+    z0 = np.mean(zs)
+
+    # FFT stuff
+    dt = float(da.time[1] - da.time[0])
+    nt = len(da.time)
+    2 * np.pi / (nt * dt)
+
+    # Nyquist
+    2 * np.pi / (2 * dt)
+
+    # create frequency vector
+    f = scipy.fft.fftfreq(nt, dt)
+    ws = 2 * np.pi * f
+
+    w = 2 * np.pi * 250
+
+    delts = -(zs - z0)[:, None] * np.sin(np.radians(thetas[None, :])) / (c0)
+
+    da = da.transpose("depth", "time")
+    dmodf = scipy.fft.fft(da.values, axis=1)
+    dmodf_ps = dmodf[:, :, None] * np.exp(
+        1j * (ws[None, :, None] + w) * delts[:, None, :]
+    )
+
+    dmod_ps_t = scipy.fft.ifft(dmodf_ps, axis=1)
+    dmod_bf_np = np.sum(dmod_ps_t, axis=0)
+    dmod_bf = xr.DataArray(
+        dmod_bf_np,
+        dims=["time", "angle"],
+        coords=({"time": da.time.values, "angle": thetas}),
+    )
+
+    # flip angles so that positive is down (to match ray code)
+    # dmod_bf = dmod_bf.assign_coords({'angle':np.flip(dmod_bf.angle.values)}).sortby('angle')
+
+    return dmod_bf
 
 
 def get_peak_location(dss, Tx_idxs=None):
@@ -223,3 +321,122 @@ def get_peak_location(dss, Tx_idxs=None):
         arrival_angles_upper,
         arrival_snr_upper,
     )
+
+
+def parse_ray_id(ray_id: str) -> tuple:
+    """
+    Convert ray_id into pygenray compatible format.
+
+    Parameters
+    ----------
+    ray_id : str
+        Ray identifier string (e.g., '-7', '+10b').
+
+    Returns
+    -------
+    ray_id_pr : str
+        Converted ray identifier in pygenray format (e.g., '-7.0', '+10.0b').
+    (sign, number, suffix) : tuple
+        Parsed components of the ray identifier.
+    """
+
+    # remove upper array suffix if present
+    if ray_id.endswith("u"):
+        ray_id = ray_id[:-1]
+
+    sign = ray_id[0]  # '+' or '-'
+    if ray_id.endswith("b"):
+        number_str = ray_id[1:-1]  # digits between sign and 'b'
+        suffix = "b"
+    else:
+        number_str = ray_id[1:]  # digits after sign
+        suffix = ""
+
+    number = int(number_str)
+
+    ray_id_pr = f"-{number}.0{suffix}" if sign == "-" else f"{number}.0{suffix}"
+
+    return ray_id_pr, (sign, number, suffix)
+
+
+def n_botts_ray_id(ray_ids: list) -> dict:
+    """
+    Compute the number of bottom bounces for each ray ID.
+
+    Parameters
+    ----------
+    ray_ids : list of str
+        Ray identifier strings (e.g., ['-7', '+10b']).
+
+    Returns
+    -------
+    n_botts : dict
+        Dictionary with keys of ray_ids and values are the number of bottom
+        bounces for each ray_id.
+    """
+    n_botts = []
+    for ray_id in ray_ids:
+        _, (ray_id_sign, ray_id_num, _) = parse_ray_id(ray_id)
+
+        if ray_id_num == 0:
+            n_botts.append(0)
+        elif ray_id_num % 2 == 0:
+            n_botts.append(ray_id_num / 2)
+        else:
+            if ray_id_sign == "+":
+                n_botts.append((ray_id_num - 1) / 2)
+            else:
+                n_botts.append((ray_id_num + 1) / 2)
+
+    return dict(zip(ray_ids, n_botts, strict=False))
+
+
+def aog_vsdg(pr, tem, sal):
+    """
+    Compute sound speed in seawater using the Del Grosso equation.
+    Modified from aog_vsdg.m matlab function.
+
+    Parameters
+    ----------
+    pr : array_like
+        Pressure in units dbar.
+    tem : array_like
+        In-situ temperature in degrees Celsius.
+    sal : array_like
+        Salinity in parts per thousand.
+
+    Returns
+    -------
+    cs : array_like
+        Sound speed in meters/second.
+
+    References
+    ----------
+    Del Grosso, V. A. (1974). New equation for the speed of sound in natural
+    waters. J. Acoust. Soc. Am., 56(4).
+    """
+    pr = pr / 9.80665  # convert pressure to kg/cm**2
+    c0 = 1402.392
+    vt = (
+        0.501109398873e01 - (0.550946843172e-01 - 0.221535969240e-03 * tem) * tem
+    ) * tem
+
+    vs = (0.132952290781e01 + 0.128955756844e-03 * sal) * sal
+
+    vp = (0.156059257041e00 + (0.244998688441e-04 - 0.883392332513e-08 * pr) * pr) * pr
+    vstp = (
+        -0.127562783426e-01 * tem * sal
+        + 0.635191613389e-02 * tem * pr
+        + 0.265484716608e-07 * tem * tem * pr * pr
+        - 0.159349479045e-05 * tem * pr * pr
+        + 0.522116437235e-09 * tem * pr * pr * pr
+        - 0.438031096213e-06 * tem * tem * tem * pr
+        - 0.161674495909e-08 * sal * sal * pr * pr
+        + 0.968403156410e-04 * tem * tem * sal
+        + 0.485639620015e-05 * tem * sal * sal * pr
+        - 0.340597039004e-03 * tem * sal * pr
+    )
+
+    cs = c0 + vt + vs + vp + vstp
+
+    return cs

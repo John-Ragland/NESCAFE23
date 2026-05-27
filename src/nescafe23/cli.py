@@ -11,8 +11,7 @@ import numpy as np
 import questionary
 from scipy import signal
 
-from nescafe23.data import get_data_dir
-from nescafe23.io import convert_to_xarray
+from nescafe23.data import convert_to_xarray, get_data_dir
 
 
 def check_output_exists(*output_paths):
@@ -270,8 +269,8 @@ def estimate_peak_locations():
 
     Requires ``T_t_estimated.pkl`` — run 'compute arrival time offset' first.
     """
-    from nescafe23.io import open_receptions
-    from nescafe23.peaks import get_peak_location
+    from nescafe23.data import open_receptions
+    from nescafe23.processing import get_peak_location
 
     data_dir = get_data_dir()
 
