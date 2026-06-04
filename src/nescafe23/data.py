@@ -104,6 +104,16 @@ def _load_ctd(
         coords={"depth": depth_vals},
         attrs={"units": "psu", "long_name": "practical salinity"},
     )
+    # extend t and s to 0 m by repeating the first value (if not already present)
+    if float(t.depth[0]) != 0.0:
+        t = xr.concat(
+            (xr.ones_like(t[0:1]).assign_coords({"depth": [0]}) * float(t[0]), t),
+            dim="depth",
+        )
+        s = xr.concat(
+            (xr.ones_like(s[0:1]).assign_coords({"depth": [0]}) * float(s[0]), s),
+            dim="depth",
+        )
     # extend t and s to 10000 m by repeating the last value
     t = xr.concat(
         (t, xr.ones_like(t[-2:-1]).assign_coords({"depth": [10000]}) * float(t[-1])),
