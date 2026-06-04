@@ -15,6 +15,8 @@ from dotenv import find_dotenv, load_dotenv
 from scipy import signal
 from tqdm import tqdm
 
+from nescafe23.processing import aog_vsdg
+
 load_dotenv(find_dotenv())
 
 
@@ -43,40 +45,129 @@ def get_data_dir() -> Path:
     return Path(path)
 
 
-def _load_ctd(path: Path | None, filename: str, suffix: str) -> xr.Dataset:
+def _load_ctd(
+    path: Path | None,
+    filename: str,
+    suffix: str,
+    lat: float,
+    lon: float,
+    z_smooth: float | None = None,
+    interpolate: bool = True,
+    varmap: dict[str, str] | None = None,
+) -> xr.Dataset:
+    """
+    Parameters
+    ----------
+    path : Path or None
+        Directory containing the CTD .mat file. If None, resolved from ``NESCAFE23_DATADIR``.
+    filename : str
+        Name of the CTD .mat file to load.
+    suffix : str
+        Suffix used in the .mat file variable names (e.g. "5" for SION, "8" for SIOE).
+        Ignored when ``varmap`` is provided.
+    lat : float
+        Latitude of the cast in decimal degrees (used for gsw pressure/salinity conversions).
+    lon : float
+        Longitude of the cast in decimal degrees (used for gsw absolute salinity conversion).
+    z_smooth : float or None
+        Vertical smoothing scale in meters. If None, no vertical filtering is applied
+    interpolate : bool
+        Whether to interpolate CTD data to regular 1 m depth grid. Default is True. If False and z_smooth is True, the CTD is smoothed anyways with a warning.
+    varmap : dict or None
+        Explicit mapping from canonical names (``z``, ``t``, ``s``) to the
+        actual variable names in the .mat file. When None, names are derived as
+        ``{var}{suffix}``.
+    Returns
+    -------
+    ctd : xr.Dataset
+        Variables: ``t``, ``s``, ``c``, ``pt`` along a ``depth`` dimension.
+        ``c`` and ``pt`` are computed from ``t`` and ``s`` via gsw + aog_vsdg.
+    """
     if path is None:
         path = get_data_dir() / "environment_data" / filename
     mat = sio.loadmat(str(path))
-    return xr.Dataset(
-        {
-            "z": xr.DataArray(
-                mat[f"z{suffix}"].squeeze(), dims="depth", attrs={"units": "m"}
-            ),
-            "t": xr.DataArray(
-                mat[f"t{suffix}"].squeeze(),
-                dims="depth",
-                attrs={"units": "deg C", "long_name": "in-situ temperature"},
-            ),
-            "pt": xr.DataArray(
-                mat[f"pt{suffix}"].squeeze(),
-                dims="depth",
-                attrs={"units": "deg C", "long_name": "potential temperature"},
-            ),
-            "s": xr.DataArray(
-                mat[f"s{suffix}"].squeeze(),
-                dims="depth",
-                attrs={"units": "psu", "long_name": "practical salinity"},
-            ),
-            "c": xr.DataArray(
-                mat[f"c{suffix}"].squeeze(),
-                dims="depth",
-                attrs={"units": "m/s", "long_name": "sound speed"},
-            ),
-        }
+
+    def _key(canonical: str) -> str:
+        return varmap[canonical] if varmap is not None else f"{canonical}{suffix}"
+
+    depth_vals = mat[_key("z")].squeeze()
+
+    t = xr.DataArray(
+        mat[_key("t")].squeeze(),
+        dims="depth",
+        coords={"depth": depth_vals},
+        attrs={"units": "deg C", "long_name": "in-situ temperature"},
+    )
+    s = xr.DataArray(
+        mat[_key("s")].squeeze(),
+        dims="depth",
+        coords={"depth": depth_vals},
+        attrs={"units": "psu", "long_name": "practical salinity"},
+    )
+    # extend t and s to 10000 m by repeating the last value
+    t = xr.concat(
+        (t, xr.ones_like(t[-2:-1]).assign_coords({"depth": [10000]}) * float(t[-1])),
+        dim="depth",
+    )
+    s = xr.concat(
+        (s, xr.ones_like(s[-2:-1]).assign_coords({"depth": [10000]}) * float(s[-1])),
+        dim="depth",
     )
 
+    ctd = xr.Dataset({"t": t, "s": s})
 
-def open_sion_ctd(path: Path | None = None) -> xr.Dataset:
+    # interpolate to 1 m vertical grid
+    if interpolate:
+        ctd_grid = ctd.interp({"depth": np.arange(0, 6000, 1)})
+    else:
+        if z_smooth is not None:
+            print(
+                "Warning: z_smooth is set but interpolate is False. Smoothing will be applied to the original CTD depth grid, which may produce unexpected results. Consider setting interpolate to True for better results."
+            )
+    if z_smooth is not None:
+        bz, az = signal.butter(4, 1 / z_smooth, fs=1)
+        target = ctd_grid if interpolate else ctd
+        dim_vars = set(target.dims)
+        # filtfilt propagates NaN, so drop NaN rows and dimension-named variables first
+        target_valid = target.drop_vars(
+            [v for v in target.data_vars if v in dim_vars]
+        ).dropna("depth")
+        filtered_vars = {}
+        for var in target_valid.data_vars:
+            filtered_vals = xrs.filtfilt(
+                target_valid[var], dim="depth", b=bz, a=az
+            ).values
+            filtered_vars[var] = xr.DataArray(
+                filtered_vals,
+                dims=["depth"],
+                coords={"depth": target_valid.depth.values},
+                attrs=target_valid[var].attrs,
+            )
+        result = xr.Dataset(filtered_vars)
+    else:
+        result = ctd if not interpolate else ctd_grid
+
+    # compute derived variables from t and s
+    p = gsw.p_from_z(-result.depth, lat)
+    SA = gsw.SA_from_SP(result["s"], p, lon, lat)
+    c = aog_vsdg(p, result["t"], result["s"])
+    c.attrs["units"] = "m/s"
+    c.attrs["long_name"] = "sound speed"
+    pt = gsw.pt_from_t(SA, result["t"], p, 0)
+    pt.attrs["units"] = "deg C"
+    pt.attrs["long_name"] = "potential temperature"
+    result = result.assign({"c": c, "pt": pt})
+
+    return result
+
+
+def open_sion_ctd(
+    path: Path | None = None,
+    z_smooth: float | None = None,
+    interpolate: bool = True,
+    lat: float = 39 + 37.194 / 60,
+    lon: float = -63 - 39.427 / 60,
+) -> xr.Dataset:
     """
     Load the SION CTD cast.
 
@@ -84,16 +175,40 @@ def open_sion_ctd(path: Path | None = None) -> xr.Dataset:
     ----------
     path:
         Path to ``SION_CTD.mat``. If None, resolved from ``NESCAFE23_DATADIR``.
+    z_smooth : float or None
+        Vertical smoothing scale in meters. If None, no vertical filtering is applied
+    interpolate : bool
+        Whether to interpolate CTD data to regular 1 m depth grid. Default is True. If False and z_smooth is True, the CTD is smoothed anyways with a warning.
+    lat : float
+        Latitude of the cast in decimal degrees. Default is the SION mooring position.
+    lon : float
+        Longitude of the cast in decimal degrees. Default is the SION mooring position.
 
     Returns
     -------
     xr.Dataset
-        Variables: ``z``, ``t``, ``pt``, ``s``, ``c`` along a ``depth`` dimension.
+        Variables: ``t``, ``pt``, ``s``, ``c`` along a ``depth`` dimension.
+        ``c`` is computed from ``t`` and ``s`` via gsw + aog_vsdg.
     """
-    return _load_ctd(path, "SION_CTD.mat", "5")
+    return _load_ctd(
+        path,
+        "SION_CTD_new.mat",
+        "5",
+        lat=lat,
+        lon=lon,
+        z_smooth=z_smooth,
+        interpolate=interpolate,
+        varmap={"z": "zi", "t": "temp", "s": "sal"},
+    )
 
 
-def open_sioe_ctd(path: Path | None = None) -> xr.Dataset:
+def open_sioe_ctd(
+    path: Path | None = None,
+    z_smooth: float | None = None,
+    interpolate: bool = True,
+    lat: float = 38.76510,
+    lon: float = -62.26043,
+) -> xr.Dataset:
     """
     Load the SIOE CTD cast.
 
@@ -101,13 +216,30 @@ def open_sioe_ctd(path: Path | None = None) -> xr.Dataset:
     ----------
     path:
         Path to ``SIOE_CTD.mat``. If None, resolved from ``NESCAFE23_DATADIR``.
+    z_smooth : float or None
+        Vertical smoothing scale in meters. If None, no vertical filtering is applied
+    interpolate : bool
+        Whether to interpolate CTD data to regular 1 m depth grid. Default is True. If False and z_smooth is True, the CTD is smoothed anyways with a warning.
+    lat : float
+        Latitude of the cast in decimal degrees. Default is the SIOE mooring position.
+    lon : float
+        Longitude of the cast in decimal degrees. Default is the SIOE mooring position.
 
     Returns
     -------
     xr.Dataset
-        Variables: ``z``, ``t``, ``pt``, ``s``, ``c`` along a ``depth`` dimension.
+        Variables: ``t``, ``pt``, ``s``, ``c`` along a ``depth`` dimension.
+        ``c`` is computed from ``t`` and ``s`` via gsw + aog_vsdg.
     """
-    return _load_ctd(path, "SIOE_CTD.mat", "8")
+    return _load_ctd(
+        path,
+        "SIOE_CTD.mat",
+        "8",
+        lat=lat,
+        lon=lon,
+        z_smooth=z_smooth,
+        interpolate=interpolate,
+    )
 
 
 def open_glider(path: Path | None = None) -> xr.Dataset:
@@ -280,8 +412,6 @@ def compute_filtered_fctd_grid(
         - SA: absolute salinity (g/kg)
         - dcdz_p: adiabatic vertical sound speed gradient (m/s^2)
     """
-    from nescafe23.physics import aog_vsdg
-
     if fn is None:
         fn = str(get_data_dir() / "environment_data" / "FCTD_SoundSpeed_Colosi_v2.mat")
 
@@ -575,3 +705,56 @@ def open_peak_locations():
         )
     with path.open("rb") as f:
         return pickle.load(f)
+
+
+def open_fctd_archive():
+    """
+    open FCTD between SION and SIOE, flip range coordinate to reflect Source > Receiver
+
+    Returns
+    -------
+    fctd : xarray.DataArray
+        FCTD sound speed data with dimensions (range, depth) and coordinates in meters.
+    """
+
+    fn = str(get_data_dir() / "environment_data" / "FCTD_SoundSpeed_Colosi_v2.mat")
+
+    fctd_mat = sio.loadmat(fn)
+
+    fctd = xr.DataArray(
+        np.flip(fctd_mat["cc"], axis=0),
+        dims=["range", "depth"],
+        coords={
+            "range": fctd_mat["r"].flatten() * 1000,
+            "depth": fctd_mat["z"].flatten(),
+            #'latitude':('range', fctd_mat['lat'].flatten()),
+            #'longitude':('range', fctd_mat['lon'].flatten())
+        },
+    ).sortby("range")
+
+    # fctd_pilot = fctd.assign_coords({'range':fctd.range.values - (201222-153500)})
+    fctd_pilot = fctd.assign_coords({"range": fctd.range.values})
+
+    # Add 10000 meter
+    fctd_pilot = xr.concat(
+        (
+            fctd_pilot,
+            xr.ones_like(fctd_pilot[:, -2:-1]).assign_coords({"depth": [10000]}) * 1640,
+        ),
+        dim="depth",
+    )
+
+    # fctd_grid = fctd_pilot.interp({'range':np.arange(0,201222,500), 'depth':np.arange(0,6000)})
+    fctd_grid = fctd_pilot.interp(
+        {"range": np.arange(0, 250431, 500), "depth": np.arange(0, 6000)}
+    )
+    # fctd_grid = fctd_grid.interpolate_na('depth')
+    fctd_grid = fctd_grid[:, 5:]
+
+    bz, az = signal.butter(4, 1 / 100, fs=1)
+    # br, ar = signal.butter(4, 1 / 10e3, fs=1 / 500)
+
+    # fctd_smooth = xrs.filtfilt(xrs.filtfilt(fctd_grid, dim='range', b=br, a=ar), dim='depth', b=bz, a=az)
+    fctd_smooth = xrs.filtfilt(fctd_grid, dim="depth", b=bz, a=az)
+
+    return fctd_smooth
