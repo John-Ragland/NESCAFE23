@@ -440,3 +440,36 @@ def aog_vsdg(pr, tem, sal):
     cs = c0 + vt + vs + vp + vstp
 
     return cs
+
+
+def clamped_pchip_interp1d(x, y, **kwargs):
+    """Cubic Hermite interpolant with PCHIP slopes and zero-derivative endpoints.
+
+    Drop-in replacement for ``scipy.interpolate.interp1d`` (call the
+    returned object on an array of x-values to get interpolated y-values)
+    that additionally guarantees ``dy/dx == 0`` at both endpoints and never
+    overshoots the y-values of the knots on any interval.
+
+    Extra ``kwargs`` are forwarded to ``CubicHermiteSpline`` (e.g.
+    ``extrapolate=False``).
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+
+    h = np.diff(x)
+    delta = np.diff(y) / h
+
+    h_left, h_right = h[:-1], h[1:]
+    d_left, d_right = delta[:-1], delta[1:]
+
+    w1 = 2.0 * h_right + h_left
+    w2 = h_right + 2.0 * h_left
+
+    same_sign = (d_left * d_right) > 0.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        harmonic_mean = (w1 + w2) / (w1 / d_left + w2 / d_right)
+    interior_slopes = np.where(same_sign, harmonic_mean, 0.0)
+
+    dydx = np.concatenate([[0.0], interior_slopes, [0.0]])
+
+    return scipy.interpolate.CubicHermiteSpline(x, y, dydx, **kwargs)

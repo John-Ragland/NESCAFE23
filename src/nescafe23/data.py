@@ -644,6 +644,21 @@ def convert_to_xarray(fn):
     return ds
 
 
+def open_T_t():
+    """
+    Open the estimated arrival time offset data.
+
+    Returns
+    -------
+    dict
+        Dictionary containing the estimated arrival time offset data.
+    """
+    data_dir = get_data_dir()
+    T_t_path = data_dir / "dataproducts" / "T_t_estimated.pkl"
+    with T_t_path.open("rb") as f:
+        return pickle.load(f)
+
+
 def open_receptions(time_slice=(90, 120)):
     """
     Open all receptions from the NESCAFE23 pilot study and remove tidal time shift.
@@ -715,6 +730,120 @@ def open_peak_locations():
         )
     with path.open("rb") as f:
         return pickle.load(f)
+
+
+def _matlab_datenum_to_datetime64(datenum: np.ndarray) -> np.ndarray:
+    """Convert MATLAB datenum (days since year 0) to numpy datetime64[us]."""
+    days = np.asarray(datenum, dtype="float64") - 719529.0  # offset to 1970-01-01
+    return np.datetime64("1970-01-01") + (days * 86_400e6).astype("int64").astype(
+        "timedelta64[us]"
+    )
+
+
+_FCTD_UNITS = {
+    "depth": "m",
+    "pressure": "dbar",
+    "temperature": "deg C",
+    "conductivity": "S/m",
+    "salinity": "psu",
+    "density": "kg/m^3",
+    "longitude": "deg E",
+    "latitude": "deg N",
+}
+
+
+def _fctd_struct_to_dataset(struct, depth: np.ndarray | None = None) -> xr.Dataset:
+    """
+    Convert one FCTDgrid/FCTDdown/FCTDup/tGrid mat_struct to an xr.Dataset.
+
+    Parameters
+    ----------
+    depth : np.ndarray or None
+        Depth coordinate to use. If None, taken from ``struct.depth``.
+        ``tGrid.depth`` is sometimes a bogus all-NaN ``(depth, time)``
+        array, so callers should pass the parent struct's 1D depth array
+        when converting a ``tGrid``.
+    """
+    if depth is None:
+        depth = np.asarray(struct.depth)
+    time = _matlab_datenum_to_datetime64(struct.time)
+
+    data_vars = {}
+    for field in struct._fieldnames:
+        if field in ("depth", "time", "tGrid"):
+            continue
+        arr = np.asarray(getattr(struct, field))
+        da = xr.DataArray(arr, dims=("depth", "time"))
+        if field in _FCTD_UNITS:
+            da.attrs["units"] = _FCTD_UNITS[field]
+        data_vars[field] = da
+
+    return xr.Dataset(data_vars, coords={"depth": depth, "time": time})
+
+
+def open_fctd_tracks(
+    path: Path | None = None,
+    pattern: str = "FCTDgrid_*.mat",
+) -> dict[str, dict[str, xr.Dataset]]:
+    """
+    Open FCTD track files as xarray Datasets.
+
+    Parameters
+    ----------
+    path : Path or None
+        Root FCTD directory containing ``FCTD_2024/`` and
+        ``FCTD_epsi_2023/``. If None, resolved from ``FCTD_DATA_DIR``.
+    pattern : str
+        Glob pattern applied to filenames within each subdirectory
+        (default ``"FCTDgrid_*.mat"``, matching files with the expected
+        ``FCTDgrid``/``FCTDdown``/``FCTDup`` struct layout). E.g.
+        ``"FCTDgrid_d3*"`` to load dive 3 from both years. Note that
+        ``FCTD_epsi_2023/`` also contains ``griddedProfiles_*.mat``
+        files with an unrelated ``GRID`` struct layout, which are
+        excluded by the default pattern.
+
+    Returns
+    -------
+    dict of dict
+        Keyed by filename stem (without extension, e.g.
+        ``"FCTDgrid_d3_A2along"``). Each value is a dict with keys
+        ``"FCTDgrid"``, ``"FCTDdown"``, ``"FCTDdown_tGrid"``,
+        ``"FCTDup"``, ``"FCTDup_tGrid"``, each mapping to an
+        ``xr.Dataset`` with dims ``(depth, time)``. Each dataset's
+        ``attrs["source_file"]`` records the originating file path.
+        Files cannot be combined into a single gridded Dataset because
+        time lengths and variable sets differ across files/years.
+    """
+    if path is None:
+        fctd_dir = os.environ.get("FCTD_DATA_DIR")
+        if not fctd_dir:
+            raise OSError("Set FCTD_DATA_DIR in your .env file.")
+        path = Path(fctd_dir)
+
+    fs = fsspec.filesystem("")
+    fns = sorted(
+        fs.glob(f"{path}/FCTD_2024/{pattern}")
+        + fs.glob(f"{path}/FCTD_epsi_2023/{pattern}")
+    )
+
+    results = {}
+    for fn in tqdm(fns):
+        mat = sio.loadmat(fn, struct_as_record=False, squeeze_me=True)
+        entry = {}
+        for key in ("FCTDgrid", "FCTDdown", "FCTDup"):
+            struct = mat[key]
+            ds = _fctd_struct_to_dataset(struct)
+            ds.attrs["source_file"] = fn
+            entry[key] = ds
+            if hasattr(struct, "tGrid"):
+                tds = _fctd_struct_to_dataset(
+                    struct.tGrid, depth=np.asarray(struct.depth)
+                )
+                tds.attrs["source_file"] = fn
+                entry[f"{key}_tGrid"] = tds
+        results[Path(fn).stem] = entry
+
+    return results
 
 
 def open_fctd_archive():
