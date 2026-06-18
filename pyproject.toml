@@ -40,6 +40,8 @@ dependencies = [
   "tqdm",
   "pygenray",
   "ipympl",
+  "cmps",
+  "pillow",
 ]
 
 [dependency-groups]
@@ -76,6 +78,7 @@ members = ["projects/*", "packages/*"]
 
 [tool.uv.sources]
 pygenray = { git = "https://github.com/John-Ragland/pygenray", branch = "main" }
+cmps = { git = "https://github.com/John-Ragland/cmps", branch = "main" }
 
 [tool.pytest.ini_options]
 minversion = "9.0"

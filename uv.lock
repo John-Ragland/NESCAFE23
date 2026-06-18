@@ -4240,6 +4240,7 @@ name = "nescafe23"
 version = "2026.4.9"
 source = { editable = "." }
 dependencies = [
+    { name = "cmps" },
     { name = "fsspec", version = "2023.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "fsspec", version = "2026.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "gsw", version = "3.6.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -4249,6 +4250,7 @@ dependencies = [
     { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pillow" },
     { name = "pygenray" },
     { name = "python-dotenv" },
     { name = "questionary" },
@@ -4286,12 +4288,14 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cmps", git = "https://github.com/John-Ragland/cmps?branch=main" },
     { name = "fsspec" },
     { name = "gsw" },
     { name = "h5py" },
     { name = "ipympl" },
     { name = "matplotlib" },
     { name = "numpy" },
+    { name = "pillow" },
     { name = "pygenray", git = "https://github.com/John-Ragland/pygenray?branch=main" },
     { name = "python-dotenv" },
     { name = "questionary" },

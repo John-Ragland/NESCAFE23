@@ -3,8 +3,10 @@
 from nescafe23.data import (
     compute_filtered_fctd_grid,
     convert_to_xarray,
+    get_colosi_picks_dir,
     get_data_dir,
     open_argo,
+    open_colosi_peak_locations,
     open_fctd_archive,
     open_fctd_tracks,
     open_glider,
@@ -16,6 +18,8 @@ from nescafe23.data import (
     open_woa,
 )
 from nescafe23.processing import (
+    PEAK_LOWER_QC,
+    PEAK_UPPER_QC,
     ULA_conventional_beamform,
     ULA_conventional_beamform_nostack,
     aog_vsdg,
@@ -23,9 +27,15 @@ from nescafe23.processing import (
     n_botts_ray_id,
     parse_ray_id,
 )
-from nescafe23.visualization import collect_upper_array_bboxs, plot_marginal_gaussian
+from nescafe23.visualization import (
+    collect_upper_array_bboxs,
+    plot_array_qc,
+    plot_marginal_gaussian,
+)
 
 __all__ = [
+    "PEAK_LOWER_QC",
+    "PEAK_UPPER_QC",
     "ULA_conventional_beamform",
     "ULA_conventional_beamform_nostack",
     "aog_vsdg",
@@ -33,9 +43,11 @@ __all__ = [
     "collect_upper_array_bboxs",
     "compute_filtered_fctd_grid",
     "convert_to_xarray",
+    "get_colosi_picks_dir",
     "get_data_dir",
     "n_botts_ray_id",
     "open_argo",
+    "open_colosi_peak_locations",
     "open_fctd_archive",
     "open_fctd_tracks",
     "open_glider",
@@ -46,5 +58,6 @@ __all__ = [
     "open_ssh",
     "open_woa",
     "parse_ray_id",
+    "plot_array_qc",
     "plot_marginal_gaussian",
 ]

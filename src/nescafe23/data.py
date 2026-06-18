@@ -45,6 +45,32 @@ def get_data_dir() -> Path:
     return Path(path)
 
 
+def get_colosi_picks_dir() -> Path:
+    """
+    Return the directory containing Colosi's hand-picked eigenray files.
+
+    Set ``NESCAFE23_COLOSI_PICKS_DIR`` in your ``.env`` file (or environment)
+    to the directory containing the ``beampeaksupper*.mat`` pick files.
+
+    Returns
+    -------
+    Path
+        Resolved path to the Colosi picks directory.
+
+    Raises
+    ------
+    EnvironmentError
+        If ``NESCAFE23_COLOSI_PICKS_DIR`` is not set.
+    """
+    path = os.environ.get("NESCAFE23_COLOSI_PICKS_DIR")
+    if not path:
+        raise OSError(
+            "Set NESCAFE23_COLOSI_PICKS_DIR in your .env file to the directory "
+            "containing Colosi's beampeaksupper*.mat pick files."
+        )
+    return Path(path)
+
+
 def _load_ctd(
     path: Path | None,
     filename: str,
@@ -730,6 +756,25 @@ def open_peak_locations():
         )
     with path.open("rb") as f:
         return pickle.load(f)
+
+
+def open_colosi_peak_locations() -> list[dict]:
+    """
+    Open Colosi's hand-picked upper-array eigenray locations.
+
+    Requires ``NESCAFE23_COLOSI_PICKS_DIR`` to be set in the environment or
+    ``.env`` file (see :func:`get_colosi_picks_dir`).
+
+    Returns
+    -------
+    list of dict
+        One ``scipy.io.loadmat`` dict per transmission, in transmission
+        order.
+    """
+    picks_dir = get_colosi_picks_dir()
+    fs = fsspec.filesystem("")
+    fns = sorted(fs.glob(f"{picks_dir}/beampeaksupper*.mat"))
+    return [sio.loadmat(fn) for fn in fns]
 
 
 def _matlab_datenum_to_datetime64(datenum: np.ndarray) -> np.ndarray:
