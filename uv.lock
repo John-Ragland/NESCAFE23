@@ -1366,6 +1366,33 @@ complete = [
 ]
 
 [[package]]
+name = "datashader"
+version = "0.19.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorcet" },
+    { name = "multipledispatch" },
+    { name = "numba" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "packaging" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "param" },
+    { name = "pyct" },
+    { name = "requests" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "toolz" },
+    { name = "xarray", version = "2025.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "xarray", version = "2026.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/53/4b/a9141f286f0c01685e9715ba3404769a6138e74575c4d5ccbaa95a22c3bd/datashader-0.19.1.tar.gz", hash = "sha256:f62d880a4a431813f9bb3959e565feda79c1634f889aaadcf948cb0d0c114cdd", size = 10581968, upload-time = "2026-05-19T07:53:06.574Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/41/247627c8b9fef5c605d00546b85771a8fe42975b9616a557cead5468789b/datashader-0.19.1-py3-none-any.whl", hash = "sha256:7ce7154ff3ed070607f429355f57002fee5a17964e47c0b6447eeafe8cef9c82", size = 10715897, upload-time = "2026-05-19T07:53:03.431Z" },
+]
+
+[[package]]
 name = "debugpy"
 version = "1.8.20"
 source = { registry = "https://pypi.org/simple" }
@@ -2794,6 +2821,19 @@ wheels = [
 ]
 
 [[package]]
+name = "jupyter-bokeh"
+version = "4.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bokeh" },
+    { name = "ipywidgets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/6b/f87742c806e544cc338095ed146ad3818508ad763e8d387dbc582d12af85/jupyter_bokeh-4.1.0.tar.gz", hash = "sha256:fc0719c653920b5a1b2b42b2f4091c43fb1570880819058d820a2ab198cb93bf", size = 759161, upload-time = "2026-06-09T11:01:53.781Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/e8/aa3dbe6f34b76cffb416e571b27e7fff9412ace109d0ecedf373e2b7e0ee/jupyter_bokeh-4.1.0-py3-none-any.whl", hash = "sha256:f25abed6052de447b759eb80d09f6aea676ce031e077462cd978fa8e941850db", size = 1332993, upload-time = "2026-06-09T11:01:55.881Z" },
+]
+
+[[package]]
 name = "jupyter-client"
 version = "8.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3856,6 +3896,15 @@ wheels = [
 ]
 
 [[package]]
+name = "multipledispatch"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/3e/a62c3b824c7dec33c4a1578bcc842e6c30300051033a4e5975ed86cc2536/multipledispatch-1.0.0.tar.gz", hash = "sha256:5c839915465c68206c3e9c473357908216c28383b425361e5d144594bf85a7e0", size = 12385, upload-time = "2023-06-27T16:45:11.074Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/c0/00c9809d8b9346eb238a6bbd5f83e846a4ce4503da94a4c08cb7284c325b/multipledispatch-1.0.0-py3-none-any.whl", hash = "sha256:0c53cd8b077546da4e48869f49b13164bebafd0c2a5afceb6bb6a316e7fb46e4", size = 12818, upload-time = "2023-06-27T16:45:09.418Z" },
+]
+
+[[package]]
 name = "myst-parser"
 version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3981,13 +4030,19 @@ test = [
 name = "n23-inversion-ragland"
 source = { editable = "projects/n23_inversion_ragland" }
 dependencies = [
+    { name = "cmocean" },
     { name = "hvplot" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "questionary" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "bokeh" },
+    { name = "datashader" },
+    { name = "holoviews" },
+    { name = "jupyter-bokeh" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
@@ -4010,13 +4065,19 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cmocean" },
     { name = "hvplot" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "questionary" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "bokeh" },
+    { name = "datashader" },
+    { name = "holoviews" },
+    { name = "jupyter-bokeh" },
     { name = "pytest", specifier = ">=9" },
     { name = "pytest-cov", specifier = ">=7" },
 ]
@@ -5535,6 +5596,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz", hash = "sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29", size = 103492, upload-time = "2026-01-21T14:26:51.89Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl", hash = "sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992", size = 48172, upload-time = "2026-01-21T14:26:50.693Z" },
+]
+
+[[package]]
+name = "pyct"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "param" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/c3/78eeacf7cbf478db6bd41de0ee2221cc6769d81e0c10f6c1616c82a25e06/pyct-0.6.0.tar.gz", hash = "sha256:d4e513b2cf35b6165605ae5fce5f2a49985bc67473c579de85134b8c71d374a8", size = 14586, upload-time = "2025-09-26T08:26:19.987Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8c/b2/23f4032cd1c9744aa8e9ecda43cd4d755fcb209f7f40fae035248f31a679/pyct-0.6.0-py3-none-any.whl", hash = "sha256:cfaded7289fca72ddf6579b81459e3ec8db323a508e61c49aa318ee3cd6ff160", size = 16630, upload-time = "2025-09-26T08:26:19.092Z" },
 ]
 
 [[package]]
