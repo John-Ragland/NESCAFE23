@@ -19,13 +19,17 @@ from nescafe23.data import (
 )
 from nescafe23.processing import (
     PEAK_LOWER_QC,
+    PEAK_LOWER_RAY_ID_LABELS,
     PEAK_UPPER_QC,
+    PEAK_UPPER_RAY_ID_LABELS,
     ULA_conventional_beamform,
     ULA_conventional_beamform_nostack,
     aog_vsdg,
     clamped_pchip_interp1d,
+    generic_ray_id,
     n_botts_ray_id,
     parse_ray_id,
+    ray_id_labels,
 )
 from nescafe23.visualization import (
     collect_upper_array_bboxs,
@@ -35,7 +39,9 @@ from nescafe23.visualization import (
 
 __all__ = [
     "PEAK_LOWER_QC",
+    "PEAK_LOWER_RAY_ID_LABELS",
     "PEAK_UPPER_QC",
+    "PEAK_UPPER_RAY_ID_LABELS",
     "ULA_conventional_beamform",
     "ULA_conventional_beamform_nostack",
     "aog_vsdg",
@@ -43,6 +49,7 @@ __all__ = [
     "collect_upper_array_bboxs",
     "compute_filtered_fctd_grid",
     "convert_to_xarray",
+    "generic_ray_id",
     "get_colosi_picks_dir",
     "get_data_dir",
     "n_botts_ray_id",
@@ -60,4 +67,5 @@ __all__ = [
     "parse_ray_id",
     "plot_array_qc",
     "plot_marginal_gaussian",
+    "ray_id_labels",
 ]

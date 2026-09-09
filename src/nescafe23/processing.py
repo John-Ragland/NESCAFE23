@@ -163,6 +163,155 @@ PEAK_UPPER_QC = {
 }
 
 
+# --------------------------------------------------------------------------------
+# Generic ray-id labels for the observed arrivals
+#
+# The two tables above key the hand-picked arrivals by NESCAFE23 ray id ("-5b",
+# "+7"), whose number is the ray's turning-point count and whose bottom-bounce
+# count is *derived from the label* by `n_botts_ray_id`.  That naming carries no
+# surface-reflection count at all, so resolving one of these ids against a traced
+# eigenray set needs the experiment-specific rules in
+# `acoustic_inversion._disambiguate_arrivals_n23` ("for -5b prefer the arrival with
+# no bottom bounces, else fall back to -5, else three bottom bounces"; "for -6
+# prefer a -6, else a -6b with no bottom bounces").
+#
+# These tables replace that guessing with a label.  Each observed NESCAFE23 id maps
+# to its *generic* ray id -- `acoustic_inversion.build_ray_id`'s
+# "<signed turning count>_b<bottom bounces>s<surface reflections>", e.g. "+6_b3s2"
+# -- which is the ray's actual traced signature and therefore resolvable in any
+# environment by `acoustic_inversion.disambiguate_arrivals_generic`, with no
+# NESCAFE23-specific rules involved.
+#
+# This is an ADDITIVE layer.  `peak_locations.pkl`, `PEAK_LOWER_QC` and
+# `PEAK_UPPER_QC` keep their existing keys, so every downstream use of the analyzed
+# arrival times is unaffected; only code that opts into the generic namespace (the
+# observation inversion in `n23_inversion_ragland.observations`) reads these.
+#
+# HOW THE VALUES WERE DERIVED, and how to correct one: see
+# `n23_inversion_ragland.observations.labelling`, run as
+# `n23-inversion label-arrivals <run_dir>`.  It ray-traces at a given geometry,
+# resolves each id through the *existing* `_disambiguate_arrivals_n23`, and reads
+# the chosen eigenray's real (turning count, n_botts, n_surfs) back out -- so the
+# labels start out agreeing with what the old code already picked, and differ from
+# it only where that resolution was ambiguous to begin with.
+#
+# `None` means "not yet labelled": a run that needs it fails with an error naming
+# it, rather than silently dropping the arrival.  The mapping must stay INJECTIVE --
+# two ids sharing one signature would merge two observation rows into one.
+#
+# The lower-array values below were derived at Tx 0's converged geometry from
+# `inversion_results/indTx_gibbs_kernel.pkl` -- source_depth 2348.4 m,
+# receiver_range 155676.4 m, receiver_depth 1051.0 m, bottom_depth 5000 m -- through
+# the climatological ocean (beta = 0), with M=80, N=10, the Gibbs horizontal kernel
+# at 50 km flanks, launch angles linspace(-35, 35, 2000), ztol 10, max_iter 50.
+# Every one of the 25 arrivals resolved.
+#
+# Two things in the result are worth knowing:
+#
+#   * The four non-`b` ("ducted") ids come out as `b0s0` -- no boundary interaction
+#     at all, which is what ducted means.  `n_botts_ray_id` meanwhile derives 3, 3, 4
+#     and 3 for them from arithmetic on their labels.  So for these rays the
+#     label-derived bounce count is simply wrong, and the traced one is right; this
+#     is the clearest case for labelling by signature rather than by name.
+#   * The `b`-suffix ids form a regular family, `±N_b<k>s<k or k±1>` with the counts
+#     rising monotonically in |N| alongside arrival time (104.5 s to 114.8 s).  A
+#     future correction that breaks that monotonicity is probably a mislabelling.
+# --------------------------------------------------------------------------------
+
+PEAK_LOWER_RAY_ID_LABELS: dict[str, str | None] = {
+    # Ducted: refracted-refracted, never reaching either boundary.
+    "+7": "+7_b0s0",
+    "+6": "+6_b0s0",
+    "-7": "-7_b0s0",
+    "-6": "-6_b0s0",
+    "-5b": "-5_b0s2",
+    "-6b": "-6_b3s3",
+    "+6b": "+6_b3s3",
+    "+7b": "+7_b3s4",
+    "-7b": "-7_b4s3",
+    "-8b": "-8_b4s4",
+    "+8b": "+8_b4s4",
+    "+9b": "+9_b4s5",
+    "-9b": "-9_b5s4",
+    "-10b": "-10_b5s5",
+    "+10b": "+10_b5s5",
+    "+11b": "+11_b5s6",
+    "-11b": "-11_b6s5",
+    "-12b": "-12_b6s6",
+    "+12b": "+12_b6s6",
+    "+13b": "+13_b6s7",
+    "-13b": "-13_b7s6",
+    "-14b": "-14_b7s7",
+    "+14b": "+14_b7s7",
+    "+15b": "+15_b7s8",
+    "-15b": "-15_b8s7",  # QC 4 (bad/missing) on every transmission; never used
+}
+
+#: Unlabelled: the upper array sits ~1.5 km shallower, so its arrivals' signatures
+#: are not the lower array's and cannot be copied across. Nothing uses it yet -- the
+#: observation inversion defaults to the lower array -- and an `array: upper` run
+#: raises an error naming the ids it needs rather than guessing. Derive them the same
+#: way, with `n23-inversion label-arrivals` at an upper-array receiver depth.
+PEAK_UPPER_RAY_ID_LABELS: dict[str, str | None] = dict.fromkeys(PEAK_UPPER_QC)
+
+
+def ray_id_labels(array: str = "lower") -> dict:
+    """The NESCAFE23 -> generic ray-id table for one receiver array.
+
+    Parameters
+    ----------
+    array : str
+        ``"lower"`` (hydrophones 32-63) or ``"upper"`` (0-31).
+
+    Returns
+    -------
+    dict
+        a copy, so a caller merging per-run overrides into it cannot edit the
+        module-level table by accident.
+    """
+    try:
+        table = {
+            "lower": PEAK_LOWER_RAY_ID_LABELS,
+            "upper": PEAK_UPPER_RAY_ID_LABELS,
+        }[array]
+    except KeyError:
+        raise ValueError(
+            f"unknown array {array!r}; expected 'lower' or 'upper'"
+        ) from None
+    return dict(table)
+
+
+def generic_ray_id(ray_id: str, array: str = "lower") -> str:
+    """The generic ray id for one observed NESCAFE23 arrival.
+
+    Raises
+    ------
+    KeyError
+        if `ray_id` is not an observed arrival for this array.
+    ValueError
+        if it is observed but not yet labelled -- a hard error rather than a silent
+        drop, because an unlabelled arrival that quietly vanished would change
+        `n_obs` and the row ordering that every residual and diagnostic is indexed
+        by, with nothing to point at.
+    """
+    table = ray_id_labels(array)
+    if ray_id not in table:
+        raise KeyError(
+            f"{ray_id!r} is not an observed {array}-array arrival. "
+            f"Known: {sorted(table)}"
+        )
+    label = table[ray_id]
+    if label is None:
+        raise ValueError(
+            f"observed arrival {ray_id!r} ({array} array) has no generic ray-id "
+            "label yet, so it cannot be disambiguated by traced signature. Derive "
+            "one with `n23-inversion label-arrivals <run_dir>` and add it to "
+            "nescafe23.processing.PEAK_LOWER_RAY_ID_LABELS, or exclude the arrival "
+            "via the run's `ray_ids` setting."
+        )
+    return label
+
+
 def ULA_conventional_beamform_nostack(da, thetas, c0=1500):
     """
     Conventional beamforming for a uniform linear array without depth stacking.

@@ -140,10 +140,24 @@ requires the CLI's "estimate peak locations" step to have run first) → ray-bas
     branch on the namespace (e.g. where a ray's bounce count comes from) uses it. Do not feed a
     NESCAFE23 id to the generic parser or vice versa: `parse_generic_ray_id("-5b")` raises, and
     `parse_ray_id("+6_b3s2")` raises a bare `ValueError` from an `int()` conversion.
+  - **A bridge between the two now exists**: `nescafe23.processing.PEAK_LOWER_RAY_ID_LABELS` maps
+    each hand-picked NESCAFE23 arrival to its generic id, read via
+    `nescafe23.ray_id_labels(array)` / `generic_ray_id(ray_id, array)`. It is purely additive —
+    `peak_locations.pkl` and both QC tables keep their NESCAFE23 keys — and it is what lets
+    `n23_inversion_ragland.observations` invert the real data in the generic namespace, using
+    `disambiguate_arrivals_generic` instead of the experiment-specific
+    `_disambiguate_arrivals_n23` rules. The values were derived by tracing, not from the labels:
+    a NESCAFE23 name carries no surface-reflection count at all. The upper array is deliberately
+    still unlabelled. See that project's CLAUDE.md for what the relabelling does and does not change.
+  - `acoustic_inversion.disambiguate_arrivals_n23` is a public alias for the private
+    NESCAFE23 disambiguator, added so the labelling above can resolve an id the old way and read
+    the chosen eigenray's real signature back out.
 - **Hydrophone array**: 64 hydrophones total, indices 0–31 = upper array, 32–63 = lower array.
 - **23 transmissions** total, indexed 0–22, each with its own `dm*.mat` file.
 - **Peak QC flags** (`PEAK_LOWER_QC`/`PEAK_UPPER_QC` in `nescafe23.processing`): integer codes 1–5 per ray id
   per transmission; downstream code conventionally treats flags `(1, 5)` as "good" and drops everything else.
+  Note `PEAK_UPPER_QC` has two **empty** rows (`-6b`, `-15b`), so indexing one by transmission raises —
+  treat a short row as "unreviewed, hence unusable" rather than assuming 23 entries.
 - **Sound speed**: computed via the Del Grosso equation, `nescafe23.processing.aog_vsdg` — note `nesma_param`
   has its own duplicate `tools.aog_vsdg`, but `nesma_param.gen_models` actually calls the `nescafe23` version
   (`n23.aog_vsdg`), so the local duplicate is effectively dead/inconsistent.
