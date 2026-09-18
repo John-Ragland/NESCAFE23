@@ -1,11 +1,14 @@
 """NESCAFE23 — shared utilities for the 2023 New England Seamounts Calibrated Acoustic Fluctuation Experiment."""
 
 from nescafe23.data import (
+    BATHYMETRY_25M_MARGIN_DEG,
     compute_filtered_fctd_grid,
     convert_to_xarray,
     get_colosi_picks_dir,
     get_data_dir,
     open_argo,
+    open_bathymetry_25m,
+    open_bathymetry_25m_bounds,
     open_colosi_peak_locations,
     open_fctd_archive,
     open_fctd_tracks,
@@ -16,6 +19,7 @@ from nescafe23.data import (
     open_sion_ctd,
     open_ssh,
     open_woa,
+    sample_bathymetry_25m,
 )
 from nescafe23.processing import (
     PEAK_LOWER_QC,
@@ -38,6 +42,7 @@ from nescafe23.visualization import (
 )
 
 __all__ = [
+    "BATHYMETRY_25M_MARGIN_DEG",
     "PEAK_LOWER_QC",
     "PEAK_LOWER_RAY_ID_LABELS",
     "PEAK_UPPER_QC",
@@ -54,6 +59,8 @@ __all__ = [
     "get_data_dir",
     "n_botts_ray_id",
     "open_argo",
+    "open_bathymetry_25m",
+    "open_bathymetry_25m_bounds",
     "open_colosi_peak_locations",
     "open_fctd_archive",
     "open_fctd_tracks",
@@ -68,4 +75,5 @@ __all__ = [
     "plot_array_qc",
     "plot_marginal_gaussian",
     "ray_id_labels",
+    "sample_bathymetry_25m",
 ]

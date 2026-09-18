@@ -114,7 +114,16 @@ e.g. `n23_inversion_ragland` uses `N23_INVERSION_DATADIR`, `n23_PE_boundary_deco
 assume `NESCAFE23_DATADIR` is the only data root in play; check each submodule's own CLAUDE.md/`.env.example`.
 `nescafe23.data` also resolves several other env vars for external datasets with no CLI setup helper:
 `GLIDER_DATA`, `ARGO_DATA_DIR`, `COPERNICUS_SATELLITE_ALTIMETRY_PATH`, `WOA2023_PATH`, `FCTD_DATA_DIR`,
-`NESCAFE23_COLOSI_PICKS_DIR`.
+`NESCAFE23_COLOSI_PICKS_DIR`, `NESCAFE23_BATHY_25M_PATH`.
+
+**Bathymetry — two grids, opposite sign conventions.** `nescafe23.open_bathymetry_25m(lat_bounds,
+lon_bounds)` / `sample_bathymetry_25m(lats, lons)` read the RR2409 25 m multibeam grid
+(`NESCAFE23_BATHY_25M_PATH`, a MATLAB **v7.3** file so `h5py` not `scipy.io.loadmat`; datasets `lar`,
+`lor`, `zr(lat, lon)` which h5py reports transposed), returning **positive-down depth in metres**. It
+is 1.37 GB whole, so only the requested lat/lon window is ever read. `nesma_param.open_data.
+open_bathymetry()` is a different dataset: GEBCO 2024 at ~450 m, variable `elevation`, positive
+**up**, used for map figures only. `n23_inversion_ragland` traces the 25 m grid; the others still
+build flat or ramped bottoms inline.
 
 ## Architecture
 
@@ -163,6 +172,14 @@ requires the CLI's "estimate peak locations" step to have run first) → ray-bas
   (`n23.aog_vsdg`), so the local duplicate is effectively dead/inconsistent.
 - **Ray tracing**: all ray work goes through `pygenray` (installed from GitHub, not PyPI) —
   `pr.OceanEnvironment2D`, `pr.shoot_rays`, `pr.find_eigenrays`.
+- **The bottom.** `pr.OceanEnvironment2D`'s `bathymetry` is a 1-D `xr.DataArray` over a `range` dim,
+  positive-down metres, on its own range grid (it need not match the sound speed's). Three traps:
+  mutating `.bathymetry` after construction updates neither `bathymetry_fe` nor
+  `bottom_angle`/`bottom_angle_interp`, so **always rebuild the environment**; the bottom *depth*
+  lookup silently clamps past the end of the profile while the bottom *slope* interpolation
+  (`interp1d(kind="cubic")`, needing ≥4 points) **raises**, so an over-range trace lies or dies
+  depending on ray luck; and a single NaN depth is traced without complaint, because
+  `abs(nan) > 90` never fires the backward-ray termination.
 
 ### Known cross-cutting issues (verified against current code, not just docs)
 - `src/nescafe23/visualization.py:collect_upper_array_bboxs` imports from a `nescafe23.peaks` module that no

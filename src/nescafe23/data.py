@@ -346,6 +346,227 @@ def open_ssh(path: Path | None = None) -> xr.Dataset:
     return xr.open_dataset(path)
 
 
+#: Padding `open_bathymetry_25m` adds to every side of a requested window before
+#: reading, in degrees, so a bilinear interpolation at the edge of the box still has
+#: neighbours. Named because a caller working out how far it may sample along a track
+#: has to subtract it from the grid's extent -- see
+#: `n23_inversion_ragland.bathymetry._map_reach`.
+BATHYMETRY_25M_MARGIN_DEG = 0.01
+
+
+def open_bathymetry_25m_bounds(
+    path: Path | None = None,
+) -> tuple[float, float, float, float]:
+    """``(lat_min, lat_max, lon_min, lon_max)`` of the 25 m grid, in degrees.
+
+    Cheap: reads the two axis vectors and never touches ``zr``, which is 1.37 GB. For
+    working out how far along a track the map actually reaches before asking for a
+    window it cannot serve.
+    """
+    if path is None:
+        p = os.environ.get("NESCAFE23_BATHY_25M_PATH")
+        if not p:
+            raise OSError("Set NESCAFE23_BATHY_25M_PATH in your .env file.")
+        path = Path(p)
+    with h5py.File(path, "r") as f:
+        lats = np.asarray(f["lar"][:], dtype=float).ravel()
+        lons = np.asarray(f["lor"][:], dtype=float).ravel()
+    return float(lats[0]), float(lats[-1]), float(lons[0]), float(lons[-1])
+
+
+def open_bathymetry_25m(
+    lat_bounds: tuple[float, float],
+    lon_bounds: tuple[float, float],
+    *,
+    margin_deg: float = BATHYMETRY_25M_MARGIN_DEG,
+    path: Path | None = None,
+) -> xr.DataArray:
+    """
+    Open the RR2409 25 m gridded bathymetry, windowed to a lat/lon box.
+
+    The full grid is 12399 x 13787 float64 -- 1.37 GB -- so it is never read whole.
+    Only the index window covering ``lat_bounds`` / ``lon_bounds`` (plus
+    ``margin_deg``, so a bilinear interpolation at the edge of the box still has
+    neighbours) is pulled off disk. For the 180 km NESCAFE23 transect that is about
+    214 MB.
+
+    Parameters
+    ----------
+    lat_bounds, lon_bounds:
+        ``(min, max)`` of the region of interest, decimal degrees. Order within the
+        pair does not matter.
+    margin_deg:
+        Padding added to every side of the window before reading, degrees.
+    path:
+        Path to the ``.mat`` file. If None, resolved from
+        ``NESCAFE23_BATHY_25M_PATH``.
+
+    Returns
+    -------
+    xr.DataArray
+        Dims ``("lat", "lon")``, **positive-down depth in metres**.
+
+    Notes
+    -----
+    The file is MATLAB v7.3, which is HDF5 -- ``scipy.io.loadmat`` cannot read it, so
+    this goes through `h5py`. h5py also reports the arrays transposed relative to
+    MATLAB: the on-disk ``zr`` is ``(lon, lat)`` here against MATLAB's ``zr(lat, lon)``,
+    and it is transposed back before being wrapped.
+
+    The sign convention is the **opposite** of
+    `nesma_param.open_data.open_bathymetry`, which returns GEBCO ``elevation``
+    (positive-up, ~450 m resolution). This one is depth, positive down, like
+    everything `pygenray` wants.
+
+    A window that is not fully inside the grid raises rather than returning NaN: a
+    partially covered transect would otherwise become a NaN bottom, which the ray
+    tracer happily integrates into garbage.
+    """
+    if path is None:
+        p = os.environ.get("NESCAFE23_BATHY_25M_PATH")
+        if not p:
+            raise OSError("Set NESCAFE23_BATHY_25M_PATH in your .env file.")
+        path = Path(p)
+
+    lat_lo, lat_hi = sorted(float(v) for v in lat_bounds)
+    lon_lo, lon_hi = sorted(float(v) for v in lon_bounds)
+    margin = float(margin_deg)
+    if margin < 0:
+        raise ValueError(f"margin_deg must be non-negative, got {margin_deg!r}")
+
+    with h5py.File(path, "r") as f:
+        lats = np.asarray(f["lar"][:], dtype=float).ravel()
+        lons = np.asarray(f["lor"][:], dtype=float).ravel()
+
+        # The one silent failure mode worth an assert: h5py reports `zr` as
+        # (lon, lat), and if that ever flipped, the window below would read a
+        # transposed patch of seafloor without complaining. The two axes have
+        # different lengths (12399 vs 13787), so this check is decisive.
+        if f["zr"].shape != (lons.size, lats.size):
+            raise ValueError(
+                f"{path} has zr shape {f['zr'].shape}, expected "
+                f"{(lons.size, lats.size)} = (lon, lat) as h5py reports a MATLAB "
+                "zr(lat, lon). The file layout is not what this loader assumes."
+            )
+        if not (np.all(np.diff(lats) > 0) and np.all(np.diff(lons) > 0)):
+            raise ValueError(
+                f"{path}'s lat/lon axes are not strictly ascending; the index "
+                "search below assumes they are."
+            )
+
+        want = (lat_lo - margin, lat_hi + margin, lon_lo - margin, lon_hi + margin)
+        if (
+            want[0] < lats[0]
+            or want[1] > lats[-1]
+            or want[2] < lons[0]
+            or want[3] > lons[-1]
+        ):
+            raise ValueError(
+                f"requested window lat [{want[0]}, {want[1]}] lon [{want[2]}, "
+                f"{want[3]}] (bounds plus a {margin} deg margin) is not fully "
+                f"inside the 25 m grid, which covers lat [{lats[0]}, {lats[-1]}] "
+                f"lon [{lons[0]}, {lons[-1]}]. Sampling outside it would return "
+                "NaNs, and a NaN bottom is traced as a plausible, wrong seafloor "
+                "rather than raising."
+            )
+
+        # `searchsorted` then widen by one on each side: the window has to *contain*
+        # the requested box, not merely start inside it, or the bilinear
+        # interpolation at the box edge has no neighbour to reach for.
+        i0 = max(int(np.searchsorted(lats, want[0], side="right")) - 1, 0)
+        i1 = min(int(np.searchsorted(lats, want[1], side="left")) + 1, lats.size)
+        j0 = max(int(np.searchsorted(lons, want[2], side="right")) - 1, 0)
+        j1 = min(int(np.searchsorted(lons, want[3], side="left")) + 1, lons.size)
+
+        # h5py's `zr` is (lon, lat); read the window in that order, then transpose.
+        window = np.asarray(f["zr"][j0:j1, i0:i1], dtype=float)
+
+    return xr.DataArray(
+        window.T,
+        dims=("lat", "lon"),
+        coords={"lat": lats[i0:i1], "lon": lons[j0:j1]},
+        name="depth",
+        attrs={
+            "units": "m",
+            "positive": "down",
+            "long_name": "seafloor depth",
+            "source": "NESMA RR2409 25 m gridded bathymetry",
+        },
+    )
+
+
+def sample_bathymetry_25m(
+    lats: np.ndarray,
+    lons: np.ndarray,
+    *,
+    margin_deg: float = BATHYMETRY_25M_MARGIN_DEG,
+    path: Path | None = None,
+) -> np.ndarray:
+    """
+    Bilinear depth at arbitrary points on the 25 m grid.
+
+    The intended use is sampling a transect: hand it the lat/lon of every point
+    along a track and get back the depth at each. Reads only the bounding box of the
+    points (see `open_bathymetry_25m`).
+
+    Parameters
+    ----------
+    lats, lons:
+        Point coordinates, decimal degrees, same shape.
+    margin_deg:
+        Padding on the window read, degrees.
+    path:
+        Path to the ``.mat`` file. If None, resolved from
+        ``NESCAFE23_BATHY_25M_PATH``.
+
+    Returns
+    -------
+    np.ndarray
+        Depth at each point, **positive down, metres**, same shape as ``lats``.
+
+    Notes
+    -----
+    Every returned value is checked finite. A single NaN bottom is worse than an
+    error: `numpy.gradient` spreads it across three slope nodes, pygenray's cubic
+    bottom-slope spline then returns NaN over a finite span, and because
+    ``abs(nan) > 90`` is False its backward-ray termination never fires -- so the
+    integrator carries a NaN state to the end and reports an arrival.
+    """
+    lat_pts = np.asarray(lats, dtype=float)
+    lon_pts = np.asarray(lons, dtype=float)
+    if lat_pts.shape != lon_pts.shape:
+        raise ValueError(
+            f"lats and lons must have the same shape, got {lat_pts.shape} and "
+            f"{lon_pts.shape}"
+        )
+
+    grid = open_bathymetry_25m(
+        (float(lat_pts.min()), float(lat_pts.max())),
+        (float(lon_pts.min()), float(lon_pts.max())),
+        margin_deg=margin_deg,
+        path=path,
+    )
+    # DataArray indexers sharing one dim give *pointwise* selection. Plain arrays
+    # would be outer-indexed into an (n, n) grid -- for a 7200-point track that is
+    # 415 MB of mostly-unwanted seafloor.
+    dim = "_track"
+    depth = grid.interp(
+        lat=xr.DataArray(lat_pts.ravel(), dims=dim),
+        lon=xr.DataArray(lon_pts.ravel(), dims=dim),
+    ).values.reshape(lat_pts.shape)
+
+    if not np.all(np.isfinite(depth)):
+        bad = ~np.isfinite(depth)
+        first = int(np.flatnonzero(bad.ravel())[0])
+        raise ValueError(
+            f"{bad.sum()} of {depth.size} sampled bathymetry points are not finite; "
+            f"the first is at lat {lat_pts.ravel()[first]}, "
+            f"lon {lon_pts.ravel()[first]}. A NaN bottom is traced as a plausible "
+            "seafloor rather than raising, so this is refused here."
+        )
+    return depth
+
+
 def open_woa(depth_grid: np.ndarray, path: Path | None = None) -> xr.Dataset:
     """
     Open and process World Ocean Atlas 2023 T/S/N² data for the NESMA region.
