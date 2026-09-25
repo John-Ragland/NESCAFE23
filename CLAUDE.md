@@ -123,7 +123,12 @@ lon_bounds)` / `sample_bathymetry_25m(lats, lons)` read the RR2409 25 m multibea
 is 1.37 GB whole, so only the requested lat/lon window is ever read. `nesma_param.open_data.
 open_bathymetry()` is a different dataset: GEBCO 2024 at ~450 m, variable `elevation`, positive
 **up**, used for map figures only. `n23_inversion_ragland` traces the 25 m grid; the others still
-build flat or ramped bottoms inline.
+build flat or ramped bottoms inline.  Provenance per the PI (2026-09-22): the 25 m
+grid comes from **GMRT**; a defensible vertical uncertainty for it has not been established, and
+the inversion is sensitive to the bottom datum at the sub-metre level (1 m of rigid offset = 4.0 ms
+rms in `n23_inversion_ragland`'s differenced travel times). See that project's `CLAUDE.md` for why
+its runs smooth the profile at 100 km and why `receiver_range` legitimately exceeds the
+anchor-to-anchor geodesic.
 
 ## Architecture
 
