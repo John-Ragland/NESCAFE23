@@ -216,6 +216,26 @@ PEAK_UPPER_QC = {
 #   * The `b`-suffix ids form a regular family, `±N_b<k>s<k or k±1>` with the counts
 #     rising monotonically in |N| alongside arrival time (104.5 s to 114.8 s).  A
 #     future correction that breaks that monotonicity is probably a mislabelling.
+#
+# `-5b` WAS RE-DERIVED on 2026-09-27 (changed here 2026-09-28, PI-approved).  The
+# value above originally read `-5_b0s2`, and the current forward model never
+# produces that signature: its row was NaN on every transmission and every
+# iteration of every generic-label observation run.  `n23-inversion
+# label-arrivals` at two Tx 0 geometries from the new-code (bathymetry-era)
+# runs -- both through the climatological ocean, stationary RBF horizontal
+# kernel --
+#
+#   flat 5000 m bottom (M=30, ell 15 km):     source_depth 2358 m,
+#       receiver_range 155578 m, receiver_depth 1050.1 m
+#   25 m map, 100 km smoothing (M=80, ell 30 km): source_depth 2385 m,
+#       receiver_range 156502 m, receiver_depth 1081.3 m
+#
+# resolves it to `-5_b0s1` at both, each flagged as having 2 candidates.  It is
+# a near-surface-grazing ray (like the ducted `-6`), so its surface count is the
+# least stable part of the table: expect it, and `-6`, to drop out of individual
+# iterations as the upper ocean changes.  For that reason the observation
+# inversion by default refuses both as the reference arrival
+# (`reference_excluded_ray_ids` in n23_inversion_ragland's config.yaml).
 # --------------------------------------------------------------------------------
 
 PEAK_LOWER_RAY_ID_LABELS: dict[str, str | None] = {
@@ -224,7 +244,7 @@ PEAK_LOWER_RAY_ID_LABELS: dict[str, str | None] = {
     "+6": "+6_b0s0",
     "-7": "-7_b0s0",
     "-6": "-6_b0s0",
-    "-5b": "-5_b0s2",
+    "-5b": "-5_b0s1",  # re-derived 2026-09-27; see above
     "-6b": "-6_b3s3",
     "+6b": "+6_b3s3",
     "+7b": "+7_b3s4",
