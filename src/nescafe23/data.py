@@ -667,7 +667,8 @@ def compute_filtered_fctd_grid(
         - c: sound speed (m/s)
         - N: buoyancy frequency (cph)
         - SA: absolute salinity (g/kg)
-        - dcdz_p: adiabatic vertical sound speed gradient (m/s^2)
+        - dcdz_p: potential vertical sound speed gradient, z positive up (1/s),
+          Colosi (2016) Eq. 2.18, evaluated at the in-situ pressure
     """
     if fn is None:
         fn = str(get_data_dir() / "environment_data" / "FCTD_SoundSpeed_Colosi_v2.mat")
@@ -763,30 +764,34 @@ def compute_filtered_fctd_grid(
         dims=["depth", "range"],
         coords={"depth": -z_mid, "range": fctd_transposed.range},
     )
-    N = (
-        np.sqrt(
-            N2x.interp(
-                {"depth": fctd_transposed.depth},
-                kwargs={"bounds_error": False, "fill_value": "extrapolate"},
+    # N2 < 0 (density inversions) gives NaN
+    with np.errstate(invalid="ignore"):
+        N = (
+            np.sqrt(
+                N2x.interp(
+                    {"depth": fctd_transposed.depth},
+                    kwargs={"bounds_error": False, "fill_value": "extrapolate"},
+                )
             )
+            / (2 * np.pi)
+            * 3600
         )
-        / (2 * np.pi)
-        * 3600
-    )
     N.attrs["units"] = "cph"
     N.name = "Buoyancy Frequency"
 
-    PT = gsw.pt_from_t(SA, fctd_transposed["tt"], p, 0)
-    PT.attrs["units"] = "deg C"
-    PT.name = "potential temperature"
+    # Potential sound speed gradient, Colosi (2016) Eq. 2.18: the total gradient minus the
+    # adiabatic gradient (Eq. 2.19), with the partial derivatives taken at the in-situ pressure.
+    # (dc/dp) at fixed potential temperature and salinity is a finite difference over a parcel
+    # displaced adiabatically by dp.
+    dp = 1.0  # [dbar]
+    t_displaced = gsw.pt_from_t(SA, fctd_transposed["tt"], p, p + dp)
+    dcdp_adiabatic = (aog_vsdg(p + dp, t_displaced, fctd_transposed["ss"]) - c) / dp
+    dcdz_adiabatic = dcdp_adiabatic * p.differentiate("depth")
 
-    C_adiabatic = aog_vsdg(0, PT, fctd_transposed["ss"])
-    C_adiabatic.attrs["units"] = "deg C"
-    C_adiabatic.name = "adiabatic sound speed"
-
-    dcdz_p = -C_adiabatic.differentiate("depth")
-    dcdz_p.attrs["units"] = "$m/s^2$"
-    dcdz_p.name = "adiabatic vertical sound speed gradient"
+    # depth is positive down, so the minus sign gives the gradient with z positive up
+    dcdz_p = -(c.differentiate("depth") - dcdz_adiabatic)
+    dcdz_p.attrs["units"] = "1/s"
+    dcdz_p.name = "potential vertical sound speed gradient"
 
     fctd_output = xr.Dataset(
         {
