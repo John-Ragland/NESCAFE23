@@ -3965,11 +3965,14 @@ wheels = [
 name = "n23-fluctuations-ragland"
 source = { editable = "projects/n23_fluctuations_ragland" }
 dependencies = [
+    { name = "cartopy" },
     { name = "cmocean" },
+    { name = "cmps" },
     { name = "geopy" },
     { name = "nescafe23" },
     { name = "panel" },
     { name = "pygenray" },
+    { name = "pyyaml" },
     { name = "questionary" },
     { name = "seaborn" },
 ]
@@ -3999,11 +4002,14 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cartopy" },
     { name = "cmocean" },
+    { name = "cmps", git = "https://github.com/John-Ragland/cmps?branch=main" },
     { name = "geopy" },
     { name = "nescafe23", editable = "." },
     { name = "panel" },
     { name = "pygenray", git = "https://github.com/John-Ragland/pygenray?branch=main" },
+    { name = "pyyaml" },
     { name = "questionary" },
     { name = "seaborn" },
 ]
@@ -4153,6 +4159,7 @@ dependencies = [
     { name = "acoustic-inversion" },
     { name = "cmps" },
     { name = "nescafe23" },
+    { name = "pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -4184,6 +4191,7 @@ requires-dist = [
     { name = "acoustic-inversion", editable = "packages/acoustic_inversion" },
     { name = "cmps", git = "https://github.com/John-Ragland/cmps?branch=main" },
     { name = "nescafe23", editable = "." },
+    { name = "pyyaml" },
 ]
 
 [package.metadata.requires-dev]
