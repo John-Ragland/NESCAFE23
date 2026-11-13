@@ -17,7 +17,9 @@ Fluctuation Experiment (NESCAFE23). It is a `uv` workspace with a base library p
 - **`projects/n23_inversion_ragland/`** (submodule) — simultaneous source localization + ocean acoustic
   inversion. Depends on `nescafe23`, `acoustic_inversion`, `nesma_param`.
 - **`projects/n23_fluctuations_ragland/`** (submodule) — acoustic fluctuation (GM internal-wave theory,
-  phase/log-amplitude spectra) analysis. Depends on `nescafe23` only.
+  phase/log-amplitude spectra) analysis. Depends on `nescafe23` only. It imports `nesma_param`
+  lazily for its β = 0 theory environment but deliberately does not declare it (not even as an extra), so it
+  installs from a public clone where the private submodules are not checked out.
 - **`projects/n23_source_localization_hoekstra/`** (submodule) — source localization via boundary-reflected
   arrivals. Depends on `nescafe23`, `acoustic_inversion`.
 - **`projects/n23_PE_boundary_decourcy/`** (submodule) — parabolic-equation (PE) acoustic propagation model

@@ -628,6 +628,111 @@ def open_woa(depth_grid: np.ndarray, path: Path | None = None) -> xr.Dataset:
     )
 
 
+#: SION mooring position ``(latitude, longitude)``, used as the reference position for pressure and
+#: absolute salinity when deriving acoustic fields from T, S along the SIOE-SION path.
+SION_LATLON = (39 + 37.194 / 60, -63 - 39.427 / 60)
+
+
+def acoustic_fields_from_TS(
+    t: xr.DataArray,
+    SP: xr.DataArray,
+    lat: float = SION_LATLON[0],
+    lon: float = SION_LATLON[1],
+) -> xr.Dataset:
+    """
+    Derive sound speed, buoyancy frequency and potential sound speed gradient from in-situ temperature
+    and practical salinity. This is the derivation used by `compute_filtered_fctd_grid`, so any
+    environment passed through it is treated exactly like the FCTD.
+
+    Parameters
+    ----------
+    t : xr.DataArray
+        in-situ temperature (deg C) with dimensions ``(depth, range)``, depth positive down in meters
+    SP : xr.DataArray
+        practical salinity (psu), same dimensions and coordinates as ``t``
+    lat : float
+        latitude used for pressure and absolute salinity. Default is the SION mooring.
+    lon : float
+        longitude used for absolute salinity. Default is the SION mooring.
+
+    Returns
+    -------
+    fields : xr.Dataset
+        Dataset with dimensions ``(depth, range)`` and variables:
+
+        - t: in-situ temperature (deg C)
+        - SP: practical salinity (psu)
+        - c: sound speed (m/s)
+        - N: buoyancy frequency (cph), NaN where N2 < 0
+        - SA: absolute salinity (g/kg)
+        - dcdz_p: potential vertical sound speed gradient, z positive up (1/s),
+          Colosi (2016) Eq. 2.18, evaluated at the in-situ pressure
+    """
+    t = t.transpose("depth", "range")
+    SP = SP.transpose("depth", "range")
+
+    p = gsw.p_from_z(-t.depth, lat)
+
+    SA = gsw.SA_from_SP(SP, p, lon, lat)
+    SA.attrs["units"] = "g/kg"
+    SA.name = "Absolute Salinity"
+
+    CT = gsw.CT_from_t(SA, t, p)
+    CT.attrs["units"] = "deg C"
+    CT.name = "Conservative Temperature"
+
+    c = aog_vsdg(p, t, SP)
+    c.attrs["units"] = "m/s"
+    c.name = "Sound Speed"
+
+    N2, pmid = gsw.Nsquared(SA, CT, p.values[:, None], lat=lat, axis=0)
+    z_mid = gsw.z_from_p(pmid, lat)[:, 0]
+    N2x = xr.DataArray(
+        N2,
+        dims=["depth", "range"],
+        coords={"depth": -z_mid, "range": t.range},
+    )
+    # N2 < 0 (density inversions) gives NaN
+    with np.errstate(invalid="ignore"):
+        N = (
+            np.sqrt(
+                N2x.interp(
+                    {"depth": t.depth},
+                    kwargs={"bounds_error": False, "fill_value": "extrapolate"},
+                )
+            )
+            / (2 * np.pi)
+            * 3600
+        )
+    N.attrs["units"] = "cph"
+    N.name = "Buoyancy Frequency"
+
+    # Potential sound speed gradient, Colosi (2016) Eq. 2.18: the total gradient minus the
+    # adiabatic gradient (Eq. 2.19), with the partial derivatives taken at the in-situ pressure.
+    # (dc/dp) at fixed potential temperature and salinity is a finite difference over a parcel
+    # displaced adiabatically by dp.
+    dp = 1.0  # [dbar]
+    t_displaced = gsw.pt_from_t(SA, t, p, p + dp)
+    dcdp_adiabatic = (aog_vsdg(p + dp, t_displaced, SP) - c) / dp
+    dcdz_adiabatic = dcdp_adiabatic * p.differentiate("depth")
+
+    # depth is positive down, so the minus sign gives the gradient with z positive up
+    dcdz_p = -(c.differentiate("depth") - dcdz_adiabatic)
+    dcdz_p.attrs["units"] = "1/s"
+    dcdz_p.name = "potential vertical sound speed gradient"
+
+    return xr.Dataset(
+        {
+            "t": t,
+            "SP": SP,
+            "c": c,
+            "N": N,
+            "SA": SA,
+            "dcdz_p": dcdz_p,
+        }
+    )
+
+
 def compute_filtered_fctd_grid(
     fn: str | None = None,
     z_smooth: float | None = 200,
@@ -737,72 +842,9 @@ def compute_filtered_fctd_grid(
     fctd_filtered["ss"].attrs["units"] = "psu"
     fctd_filtered["ss"].name = "practical salinity"
 
-    coords = {
-        "SION": [39 + 37.194 / 60, -63 - 39.427 / 60],
-    }
-
     fctd_transposed = fctd_filtered.transpose("depth", "range")
 
-    p = gsw.p_from_z(-fctd_transposed.depth, coords["SION"][0])
-
-    SA = gsw.SA_from_SP(fctd_transposed["ss"], p, coords["SION"][1], coords["SION"][0])
-    SA.attrs["units"] = "g/kg"
-    SA.name = "Absolute Salinity"
-
-    CT = gsw.CT_from_t(SA, fctd_transposed["tt"], p)
-    CT.attrs["units"] = "deg C"
-    CT.name = "Conservative Temperature"
-
-    c = aog_vsdg(p, fctd_transposed["tt"], fctd_transposed["ss"])
-    c.attrs["units"] = "m/s"
-    c.name = "Sound Speed"
-
-    N2, pmid = gsw.Nsquared(SA, CT, p.values[:, None], lat=coords["SION"][0], axis=0)
-    z_mid = gsw.z_from_p(pmid, coords["SION"][0])[:, 0]
-    N2x = xr.DataArray(
-        N2,
-        dims=["depth", "range"],
-        coords={"depth": -z_mid, "range": fctd_transposed.range},
-    )
-    # N2 < 0 (density inversions) gives NaN
-    with np.errstate(invalid="ignore"):
-        N = (
-            np.sqrt(
-                N2x.interp(
-                    {"depth": fctd_transposed.depth},
-                    kwargs={"bounds_error": False, "fill_value": "extrapolate"},
-                )
-            )
-            / (2 * np.pi)
-            * 3600
-        )
-    N.attrs["units"] = "cph"
-    N.name = "Buoyancy Frequency"
-
-    # Potential sound speed gradient, Colosi (2016) Eq. 2.18: the total gradient minus the
-    # adiabatic gradient (Eq. 2.19), with the partial derivatives taken at the in-situ pressure.
-    # (dc/dp) at fixed potential temperature and salinity is a finite difference over a parcel
-    # displaced adiabatically by dp.
-    dp = 1.0  # [dbar]
-    t_displaced = gsw.pt_from_t(SA, fctd_transposed["tt"], p, p + dp)
-    dcdp_adiabatic = (aog_vsdg(p + dp, t_displaced, fctd_transposed["ss"]) - c) / dp
-    dcdz_adiabatic = dcdp_adiabatic * p.differentiate("depth")
-
-    # depth is positive down, so the minus sign gives the gradient with z positive up
-    dcdz_p = -(c.differentiate("depth") - dcdz_adiabatic)
-    dcdz_p.attrs["units"] = "1/s"
-    dcdz_p.name = "potential vertical sound speed gradient"
-
-    fctd_output = xr.Dataset(
-        {
-            "t": fctd_transposed["tt"],
-            "SP": fctd_transposed["ss"],
-            "c": c,
-            "N": N,
-            "SA": SA,
-            "dcdz_p": dcdz_p,
-        }
-    )
+    fctd_output = acoustic_fields_from_TS(fctd_transposed["tt"], fctd_transposed["ss"])
 
     fctd_centered = fctd_output.assign_coords(
         {"range": 115000 - fctd_output.range.values}

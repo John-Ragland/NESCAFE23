@@ -2,6 +2,8 @@
 
 from nescafe23.data import (
     BATHYMETRY_25M_MARGIN_DEG,
+    SION_LATLON,
+    acoustic_fields_from_TS,
     compute_filtered_fctd_grid,
     convert_to_xarray,
     get_colosi_picks_dir,
@@ -47,8 +49,10 @@ __all__ = [
     "PEAK_LOWER_RAY_ID_LABELS",
     "PEAK_UPPER_QC",
     "PEAK_UPPER_RAY_ID_LABELS",
+    "SION_LATLON",
     "ULA_conventional_beamform",
     "ULA_conventional_beamform_nostack",
+    "acoustic_fields_from_TS",
     "aog_vsdg",
     "clamped_pchip_interp1d",
     "collect_upper_array_bboxs",
