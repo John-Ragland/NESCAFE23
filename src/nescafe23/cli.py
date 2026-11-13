@@ -1,5 +1,6 @@
 """nescafe23 unified CLI."""
 
+import os
 import pickle
 import urllib.request
 from functools import wraps
@@ -62,42 +63,44 @@ def _workspace_root() -> Path:
     return Path(__file__).parent.parent.parent
 
 
+def _env_data_dir(env_path: Path) -> str | None:
+    """Return NESCAFE23_DATADIR as written in ``env_path``, or None if the file or key is missing."""
+    from dotenv import dotenv_values
+
+    if not env_path.exists():
+        return None
+    return dotenv_values(env_path).get("NESCAFE23_DATADIR") or None
+
+
 def _ensure_data_dir():
     """Prompt for NESCAFE23_DATADIR if not already set in the .env file."""
-    from dotenv import find_dotenv, load_dotenv
-
     env_path = _workspace_root() / ".env"
-
-    existing_path = None
-    if env_path.exists():
-        with env_path.open() as f:
-            for line in f:
-                if line.strip().startswith("NESCAFE23_DATADIR"):
-                    existing_path = line.split("=", 1)[1].strip().strip('"').strip("'")
-                    break
-
-    if existing_path:
+    if _env_data_dir(env_path):
         return
 
     print("\nNESCAFE23_DATADIR is not set.")
     _set_data_dir(env_path)
-    # Reload so get_data_dir() sees the newly written value in this process.
-    load_dotenv(find_dotenv(), override=True)
 
 
 def _set_data_dir(env_path=None):
-    """Interactively set the NESCAFE23 data directory."""
+    """
+    Interactively set the NESCAFE23 data directory.
+
+    Only the ``NESCAFE23_DATADIR`` line of ``env_path`` is written; any other variables in the file are kept.
+    The new value is also put in ``os.environ``, so `get_data_dir` sees it in the running process.
+
+    Returns
+    -------
+    str or None
+        the new path, or None if the path was kept or the prompt was cancelled.
+    """
+    from dotenv import set_key
+
     if env_path is None:
         env_path = _workspace_root() / ".env"
+    env_path = Path(env_path)
 
-    existing_path = None
-    if env_path.exists():
-        with env_path.open() as f:
-            for line in f:
-                if line.strip().startswith("NESCAFE23_DATADIR"):
-                    existing_path = line.split("=", 1)[1].strip().strip('"').strip("'")
-                    break
-
+    existing_path = _env_data_dir(env_path)
     if existing_path:
         print(f"\nCurrent NESCAFE23 data directory: {existing_path}")
         change = questionary.confirm(
@@ -105,24 +108,26 @@ def _set_data_dir(env_path=None):
         ).ask()
         if not change:
             print("Keeping existing path.")
-            return
+            return None
 
     new_path = questionary.path(
         "Enter the absolute path to the NESCAFE23 data directory:",
         only_directories=True,
     ).ask()
 
-    if new_path is None:
+    if not new_path:
         print("Cancelled.")
-        return
+        return None
 
-    new_path = new_path.rstrip("/") + "/"
+    new_path = str(Path(new_path).expanduser().resolve()).rstrip("/") + "/"
 
-    with env_path.open("w") as f:
-        f.write(f'NESCAFE23_DATADIR="{new_path}"\n')
+    env_path.touch(exist_ok=True)
+    set_key(env_path, "NESCAFE23_DATADIR", new_path, quote_mode="always")
+    os.environ["NESCAFE23_DATADIR"] = new_path
 
     print(f"\n✓ Set NESCAFE23_DATADIR to: {new_path}")
     print(f"✓ Saved to: {env_path}")
+    return new_path
 
 
 def download_fonts():
