@@ -4,6 +4,7 @@ import os
 
 import pytest
 from dotenv import dotenv_values
+
 from nescafe23 import cli
 
 
@@ -22,14 +23,18 @@ def prompts(monkeypatch):
     monkeypatch.setattr(
         cli.questionary, "confirm", lambda *a, **k: _Answer(answers["confirm"])
     )
-    monkeypatch.setattr(cli.questionary, "path", lambda *a, **k: _Answer(answers["path"]))
+    monkeypatch.setattr(
+        cli.questionary, "path", lambda *a, **k: _Answer(answers["path"])
+    )
     monkeypatch.delenv("NESCAFE23_DATADIR", raising=False)
     return answers
 
 
 def test_set_data_dir_keeps_other_keys(tmp_path, prompts):
     env = tmp_path / ".env"
-    env.write_text('GLIDER_DATA="/glider"\nNESCAFE23_DATADIR="/old/"\nWOA2023_PATH="/woa"\n')
+    env.write_text(
+        'GLIDER_DATA="/glider"\nNESCAFE23_DATADIR="/old/"\nWOA2023_PATH="/woa"\n'
+    )
     data = tmp_path / "data"
     data.mkdir()
     prompts.update(confirm=True, path=str(data))

@@ -38,7 +38,6 @@ from nescafe23.processing import (
     ray_id_labels,
 )
 from nescafe23.visualization import (
-    collect_upper_array_bboxs,
     plot_array_qc,
     plot_marginal_gaussian,
 )
@@ -55,7 +54,6 @@ __all__ = [
     "acoustic_fields_from_TS",
     "aog_vsdg",
     "clamped_pchip_interp1d",
-    "collect_upper_array_bboxs",
     "compute_filtered_fctd_grid",
     "convert_to_xarray",
     "generic_ray_id",

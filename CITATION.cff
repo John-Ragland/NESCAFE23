@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite the paper for the analysis you build
+  on. Each released project in the workspace has its own CITATION.cff; the
+  preferred citation below is the first paper released from it.
+title: NESCAFE23
+abstract: >-
+  Analysis and research codebase for the 2023 pilot New England Seamounts
+  Calibrated Acoustic Fluctuation Experiment (NESCAFE23).
+type: software
+authors:
+  - family-names: Ragland
+    given-names: John
+  - family-names: Colosi
+    given-names: John
+repository-code: "https://github.com/John-Ragland/NESCAFE23"
+license: BSD-3-Clause
+preferred-citation:
+  type: article
+  title: >-
+    Analysis of acoustic fluctuations for 150-km, low frequency transmissions
+    across the Gulf Stream in the vicinity of the New England Seamount chain
+  authors:
+    - family-names: Ragland
+      given-names: John
+    - family-names: Colosi
+      given-names: John
+    - family-names: Hoekstra
+      given-names: Katherine
+    - family-names: Dzieciuch
+      given-names: Matthew
+    - family-names: Alford
+      given-names: Matthew
+    - family-names: Bellerjeau
+      given-names: Charlotte
+  year: 2026
+  month: 7
+  publisher:
+    name: ESS Open Archive
+  doi: 10.22541/essoar.15006016/v1
+  url: "https://essopenarchive.org/doi/full/10.22541/essoar.15006016/v1"
+  notes: Preprint, submitted to the Journal of the Acoustical Society of America.

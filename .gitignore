@@ -15,3 +15,10 @@ dev/
 
 token.txt
 figures/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local agent/assistant files
+CLAUDE.md
+.claude/

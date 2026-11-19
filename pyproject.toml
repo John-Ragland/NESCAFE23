@@ -4,13 +4,15 @@ version = "2026.04.09"
 description = "Code for analysis and research related to the 2023 pilot New England Seamounts Calibrated Acoustic Fluctuation Experiment (NESCAFE23)."
 
 readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [
     { name = "John Ragland", email = "john.ragland@whoi.edu" },
     { name = "John Colosi", email = "jcolosi@whoi.edu" },
 ]
 
 classifiers = [
-  "Development Status :: 1 - Planning",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
@@ -52,6 +54,7 @@ test = [
 dev = [
   { include-group = "test" },
   "ipykernel",
+  "nbstripout",
   "pre-commit",
 ]
 docs = [
@@ -100,6 +103,7 @@ testpaths = [
     "projects/n23_fluctuations_ragland/tests",
     "projects/n23_source_localization_hoekstra/tests",
     "projects/n23_PE_boundary_decourcy/tests",
+    "projects/n23_backprop_colosi/tests",
 ]
 
 
