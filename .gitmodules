@@ -22,3 +22,7 @@
 	path = projects/n23_PE_boundary_decourcy
 	url = https://github.com/John-Ragland/n23_PE_boundary_decourcy.git
 	branch = main
+[submodule "projects/n23_backprop_colosi"]
+	path = projects/n23_backprop_colosi
+	url = https://github.com/John-Ragland/n23_backprop_colosi.git
+	branch = main
