@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 NESCAFE23 is the analysis and research codebase for the 2023 pilot New England Seamounts Calibrated Acoustic
-Fluctuation Experiment (NESCAFE23). It is a `uv` workspace with a base library plus six **git submodules**
+Fluctuation Experiment (NESCAFE23). It is a `uv` workspace with a base library plus seven **git submodules**
 (each its own GitHub repo, cloned under `packages/` and `projects/`):
 
 - **`src/nescafe23/`** — the base shared library (data I/O, physics utilities, CLI, visualization). Every
@@ -25,6 +25,8 @@ Fluctuation Experiment (NESCAFE23). It is a `uv` workspace with a base library p
 - **`projects/n23_PE_boundary_decourcy/`** (submodule) — parabolic-equation (PE) acoustic propagation model
   output compared against ray tracing and observed receptions. Depends on `nescafe23`. Early-stage/notebook-only;
   not previously listed here.
+- **`projects/n23_backprop_colosi/`** (submodule) — acoustic backpropagation analysis of NESCAFE23 receptions.
+  Depends on `nescafe23`. Newly scaffolded (2026-11-16) from the `project-template` copier template; no code yet.
 
 Each submodule has its own `CLAUDE.md` with details specific to it — read the relevant one before working
 inside `packages/*` or `projects/*`. Because these are git submodules, edits inside them are commits in a
@@ -40,7 +42,8 @@ nescafe23 (src/, base library)
 │       ├── n23_inversion_ragland
 │       └── n23_source_localization_hoekstra
 ├── n23_fluctuations_ragland
-└── n23_PE_boundary_decourcy
+├── n23_PE_boundary_decourcy
+└── n23_backprop_colosi
 ```
 
 No circular dependencies exist. `nesma_param`'s `pyproject.toml` does not explicitly declare `nescafe23` as a
